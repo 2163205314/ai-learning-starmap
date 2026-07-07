@@ -1,0 +1,30 @@
+{% load static %}
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}AI 学习星图{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'learning/css/style.css' %}">
+</head>
+<body>
+    <div class="star-field" aria-hidden="true">
+        {% for i in "1234567890123456789012345678901234567890" %}<span class="star"></span>{% endfor %}
+    </div>
+    <header class="site-header glass-card">
+        <a class="brand" href="/">✦ AI 学习星图</a>
+        <nav class="main-nav" aria-label="主导航">
+            <a href="/">首页</a>
+            <a href="/courses/">课程学习</a>
+            <a href="/lab/">互动实验室</a>
+            <a href="/project/">项目实战</a>
+            <a href="/glossary/">概念词典</a>
+        </nav>
+    </header>
+    <main class="page-shell">
+        {% block content %}{% endblock %}
+    </main>
+    <script src="{% static 'learning/js/main.js' %}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

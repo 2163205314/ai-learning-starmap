@@ -1,0 +1,25 @@
+{% extends "learning/base.html" %}
+{% load static %}
+{% block title %}项目实战 · AI 学习星图{% endblock %}
+{% block content %}
+<section class="page-title"><p class="eyebrow">Project Build</p><h1>智能客服 RAG 项目实战</h1><p>从文档准备到 Agent 回答，拆解一个可上线知识库问答系统的关键工程决策。</p></section>
+<section class="project-layout">
+    <div class="step-stack">
+        {% for title, subtitle in steps %}
+        <article class="glass-card project-step" data-state="todo">
+            <button class="step-head"><span><small>Step {{ forloop.counter }}</small><strong>{{ title }}</strong><em>{{ subtitle }}</em></span><b>待完成</b></button>
+            <p class="step-detail">本步骤需要关注数据质量、边界条件和可观测性。点击状态可在待完成、进行中、已完成之间切换，模拟项目推进过程。</p>
+        </article>
+        {% endfor %}
+    </div>
+    <aside class="glass-card budget-panel">
+        <h2>Token 预算</h2>
+        {% for label, tokens, color in token_budget %}<div class="budget-row"><span>{{ label }}</span><b>{{ tokens }}</b><div class="progress-bar"><span class="{{ color }}" style="width: {% widthratio tokens max_tokens 100 %}%"></span></div></div>{% endfor %}
+        <h2>延迟估算</h2>
+        {% for label, min, max in latency %}<div class="latency-row"><span>{{ label }}</span><div><i style="width: {% widthratio max 4000 100 %}%"></i></div><small>{{ min }}ms - {{ max }}ms</small></div>{% endfor %}
+        <h2>优化建议</h2>
+        <ul class="takeaways"><li>缓存高频问题的检索结果。</li><li>控制 chunk 数量，避免上下文膨胀。</li><li>对 Reranker 设置超时和降级策略。</li><li>记录 token、延迟、命中率与用户反馈。</li></ul>
+    </aside>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{% static 'learning/js/main.js' %}"></script>{% endblock %}

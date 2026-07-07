@@ -1,0 +1,79 @@
+{% extends "learning/base.html" %}
+{% load static %}
+{% block title %}互动实验室 · AI 学习星图{% endblock %}
+{% block content %}
+<section class="page-title"><p class="eyebrow">Interactive Lab</p><h1>互动实验室</h1><p>用可操作的模拟器理解 RAG、Chunk、Embedding 与 Attention。</p></section>
+<section class="glass-card lab-shell">
+    <div class="tab-list"><button class="active" data-tab="rag">RAG 流程</button><button data-tab="chunk">Chunk 调节</button><button data-tab="embedding">Embedding 相似度</button><button data-tab="attention">Attention 拆解</button></div>
+    <div class="tab-panel active" id="tab-rag">
+        <div class="lab-grid two-cols">
+            <div class="rag-canvas">
+                <svg viewBox="0 0 920 320" role="img" aria-label="RAG 流程模拟器">
+                    <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z"></path></marker></defs>
+                    <path class="rag-line" d="M110 155 C205 70 285 70 380 155 S555 240 650 155 S775 70 850 155" marker-end="url(#arrow)"></path>
+                    <g class="rag-node active" data-step="load" tabindex="0"><circle cx="90" cy="155" r="48"></circle><text x="90" y="163">加载</text></g>
+                    <g class="rag-node" data-step="split" tabindex="0"><circle cx="245" cy="95" r="48"></circle><text x="245" y="103">切分</text></g>
+                    <g class="rag-node" data-step="embed" tabindex="0"><circle cx="390" cy="155" r="48"></circle><text x="390" y="163">向量化</text></g>
+                    <g class="rag-node" data-step="retrieve" tabindex="0"><circle cx="535" cy="225" r="48"></circle><text x="535" y="233">检索</text></g>
+                    <g class="rag-node" data-step="rerank" tabindex="0"><circle cx="680" cy="155" r="48"></circle><text x="680" y="163">重排序</text></g>
+                    <g class="rag-node" data-step="generate" tabindex="0"><circle cx="835" cy="95" r="48"></circle><text x="835" y="103">生成</text></g>
+                </svg>
+            </div>
+            <aside class="result-box rag-detail-card">
+                <p class="eyebrow">Pipeline Step</p>
+                <h2 id="ragTitle">加载知识源</h2>
+                <p id="ragDetail">读取 FAQ、产品文档、工单和政策文件，同时保留来源、更新时间、权限标签等元数据。</p>
+                <dl class="lab-kv"><div><dt>输入</dt><dd id="ragInput">原始文档</dd></div><div><dt>输出</dt><dd id="ragOutput">带元数据的文档对象</dd></div><div><dt>风险</dt><dd id="ragRisk">权限混乱会导致越权检索</dd></div></dl>
+            </aside>
+        </div>
+    </div>
+    <div class="tab-panel" id="tab-chunk">
+        <div class="lab-grid two-cols">
+            <div class="control-board">
+                <label class="range-control"><span>chunk_size：<b id="chunkSizeValue">400</b></span><input id="chunkSize" type="range" min="100" max="1000" step="50" value="400"></label>
+                <label class="range-control"><span>chunk_overlap：<b id="chunkOverlapValue">80</b></span><input id="chunkOverlap" type="range" min="0" max="200" step="10" value="80"></label>
+                <div id="chunkStats" class="metric-grid"></div>
+                <div id="chunkAdvice" class="result-box"></div>
+            </div>
+            <div><h2>Chunk 预览</h2><div id="chunkPreview" class="chunk-preview rich"></div></div>
+        </div>
+    </div>
+    <div class="tab-panel" id="tab-embedding">
+        <div class="lab-grid two-cols">
+            <div>
+                <h2>词汇对</h2>
+                <div class="preset-pairs"><button>猫|狗</button><button>猫|汽车</button><button>退款|退货</button><button>苹果|香蕉</button><button>北京|上海</button><button>Python|Java</button><button>天气|雨伞</button><button>快乐|悲伤</button></div>
+                <div class="inline-form"><input id="wordA" value="猫" aria-label="词 A"><input id="wordB" value="狗" aria-label="词 B"><button class="glow-btn" id="calcSimilarity">计算相似度</button></div>
+                <div class="similarity-meter"><span id="similarityNeedle"></span><b id="similarityScore">--</b></div>
+            </div>
+            <div class="result-box"><h2 id="similarityTitle">等待计算</h2><p id="similarityMethod">默认使用后端模拟语义词库；如果安装 sentence-transformers，会返回真实向量结果。</p><div id="vectorPreview" class="vector-preview"></div><pre id="similarityResult" class="code-block">结果会显示在这里。</pre></div>
+        </div>
+    </div>
+    <div class="tab-panel" id="tab-attention">
+        <div class="attention-lab">
+            <div class="attention-intro">
+                <div><p class="eyebrow">Example Sentence</p><h2>例句：Agent 调用 工具</h2><p>我们只看 3 个 token，目标是回答：每个词在理解自己时，应该参考其他词多少？</p></div>
+                <div class="token-row"><span>Agent</span><span>调用</span><span>工具</span></div>
+            </div>
+            <div class="attention-legend glass-card">
+                <article><b>Q = 我在找什么</b><span>当前 token 发出的“查询”</span></article>
+                <article><b>K = 我有什么特征</b><span>其他 token 可被匹配的“钥匙”</span></article>
+                <article><b>V = 我携带的信息</b><span>最终被加权汇总的内容</span></article>
+            </div>
+            <div class="attention-steps"><button class="active" data-attention="score">1. 算匹配分</button><button data-attention="scale">2. 缩放分数</button><button data-attention="softmax">3. 转成权重</button><button data-attention="value">4. 汇总信息</button></div>
+            <div class="lab-grid two-cols">
+                <div class="matrix-stage" id="matrixStage"></div>
+                <aside class="result-box attention-explain">
+                    <p class="eyebrow" id="attentionStepLabel">Step 1</p>
+                    <h2 id="attentionTitle">QKᵀ：计算相关性</h2>
+                    <p id="attentionText">把 Query 与每个 Key 做点积，分数越高表示当前词越应该关注那个词。</p>
+                    <div id="attentionFormula" class="formula-card">score = Q · Kᵀ</div>
+                    <dl class="lab-kv"><div><dt>这一步输入</dt><dd id="attentionInput">Q 矩阵、K 矩阵</dd></div><div><dt>这一步输出</dt><dd id="attentionOutput">每个 token 对其他 token 的原始关注分数</dd></div><div><dt>怎么读图</dt><dd id="attentionRead">看一行：这一行的词正在决定关注谁；颜色越亮，关注越强。</dd></div></dl>
+                    <div class="attention-summary" id="attentionSummary">例如“调用”这一行更关注“Agent”和“工具”，因为它需要知道谁在调用、调用什么。</div>
+                </aside>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{% static 'learning/js/lab.js' %}"></script>{% endblock %}

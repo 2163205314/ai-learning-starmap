@@ -1,0 +1,20 @@
+{% extends "learning/base.html" %}
+{% load static %}
+{% block title %}概念词典 · AI 学习星图{% endblock %}
+{% block content %}
+<section class="page-title"><p class="eyebrow">Glossary</p><h1>概念词典</h1><p>搜索术语、筛选分类，并沿关联概念跳转，建立知识网络。</p></section>
+<section class="glass-card glossary-tools">
+    <form method="get" class="search-form"><input name="q" value="{{ query }}" placeholder="搜索概念名称、解释、分类、难度"><input type="hidden" name="category" value="{{ category }}"><button class="glow-btn">搜索</button></form>
+    <div class="filter-row"><a class="nav-pill {% if category == 'all' %}active{% endif %}" href="/glossary/?q={{ query }}&category=all">全部</a>{% for item in categories %}<a class="nav-pill {% if category == item %}active{% endif %}" href="/glossary/?q={{ query }}&category={{ item }}">{{ item }}</a>{% endfor %}</div>
+</section>
+<section class="concept-grid">
+    {% for concept in concepts %}
+    <article class="glass-card concept-card" id="{{ concept.concept_id }}">
+        <button class="concept-toggle"><span><small>{{ concept.category }} · {{ concept.difficulty }}</small><strong>{{ concept.name }}</strong></span><b>关联</b></button>
+        <p>{{ concept.explanation }}</p>
+        <div class="related-list">{% for related in concept.related.all %}<a href="#{{ related.concept_id }}">{{ related.name }}</a>{% empty %}<span>暂无关联概念</span>{% endfor %}</div>
+    </article>
+    {% empty %}<div class="glass-card"><h2>没有找到概念</h2><p>换个关键词或分类试试。</p></div>{% endfor %}
+</section>
+{% endblock %}
+{% block scripts %}<script src="{% static 'learning/js/glossary.js' %}"></script>{% endblock %}

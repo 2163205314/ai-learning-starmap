@@ -1,0 +1,48 @@
+{% extends "learning/base.html" %}
+{% load static %}
+{% block title %}课程学习 · AI 学习星图{% endblock %}
+{% block content %}
+<section class="page-title"><p class="eyebrow">Course Deck</p><h1>{{ page_title }}</h1><p>展开卡片、阅读章节、完成测验，把概念连接成可复用的工程知识。</p></section>
+<section class="course-layout">
+    <aside class="glass-card side-panel">
+        <h2>模块导航</h2>
+        {% for module in modules %}<a class="nav-pill {% if selected_module == module.key and not selected_path %}active{% endif %}" href="/courses/?module={{ module.key }}">{{ module.icon }} {{ module.name }}</a>{% endfor %}
+        <h2>学习路径</h2>
+        {% for path in paths %}<a class="nav-pill {% if selected_path == path.path_id %}active{% endif %}" href="/courses/?path={{ path.path_id }}">{{ path.icon }} {{ path.title }}</a>{% endfor %}
+    </aside>
+    <div class="course-stack">
+        {% for card in cards %}
+        <article class="glass-card knowledge-card" data-card-id="{{ card.card_id }}">
+            <button class="card-toggle"><span><small>{{ card.module.icon }} {{ card.module.name }} · {{ card.difficulty }}</small><strong>{{ card.title }}</strong></span><b>展开</b></button>
+            <p>{{ card.summary }}</p>
+            <ul class="takeaways">{% for item in card.key_takeaways %}<li>{{ item }}</li>{% endfor %}</ul>
+            <div class="card-detail">
+                {% for section in card.sections.all %}
+                <section class="section-card">
+                    <button class="section-toggle">{{ section.title }} <span>{{ section.visual_type|default:"note" }}</span></button>
+                    <div class="section-body"><p>{{ section.content|linebreaksbr }}</p>{% if section.code_example %}<pre class="code-block"><code>{{ section.code_example }}</code></pre>{% endif %}</div>
+                </section>
+                {% endfor %}
+            </div>
+        </article>
+        {% empty %}<div class="glass-card"><h2>暂无课程</h2><p>请先运行 seed_learning_data 导入知识数据。</p></div>{% endfor %}
+        <section class="glass-card quiz-zone">
+            <h2>模块测验</h2>
+            {% for quiz in quizzes %}
+            <div class="quiz-card" data-quiz-id="{{ quiz.quiz_id }}">
+                <h3>{{ quiz.question }}</h3>
+                <div class="quiz-options">{% for option in quiz.options %}<button data-index="{{ forloop.counter0 }}">{{ option }}</button>{% endfor %}</div>
+                <p class="quiz-result"></p>
+            </div>
+            {% empty %}<p>当前模块暂无关联测验。</p>{% endfor %}
+        </section>
+    </div>
+    <aside class="glass-card progress-panel">
+        <h2>学习进度</h2>
+        <div class="progress-metric"><span>已看卡片</span><strong id="seenCount">0</strong></div><div class="progress-bar"><span id="seenBar"></span></div>
+        <div class="progress-metric"><span>已答题</span><strong id="answeredCount">0</strong></div><div class="progress-bar"><span id="answeredBar"></span></div>
+        <div class="progress-metric"><span>答对数量</span><strong id="correctCount">0</strong></div><div class="progress-bar"><span id="correctBar"></span></div>
+    </aside>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{% static 'learning/js/courses.js' %}"></script>{% endblock %}

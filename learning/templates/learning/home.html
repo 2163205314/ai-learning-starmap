@@ -1,0 +1,47 @@
+{% extends "learning/base.html" %}
+{% block title %}AI 学习星图 · 首页{% endblock %}
+{% block content %}
+<section class="hero">
+    <div class="hero-copy">
+        <p class="eyebrow">Local Django Learning Atlas</p>
+        <h1>AI 学习星图</h1>
+        <p class="hero-subtitle">从 Agent 到 RAG，再到 Transformer 原理，用路径、卡片、实验和项目把知识连成星系。</p>
+        <div class="hero-actions">
+            <a class="glow-btn" href="/courses/">开始学习</a>
+            <a class="glow-btn secondary" href="/glossary/">探索概念</a>
+        </div>
+    </div>
+    <div class="orbital glass-card">
+        <svg viewBox="0 0 560 360" role="img" aria-label="概念星图">
+            <defs><filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+            <line x1="120" y1="170" x2="260" y2="90"/><line x1="120" y1="170" x2="270" y2="240"/><line x1="120" y1="170" x2="405" y2="170"/><line x1="260" y1="90" x2="405" y2="70"/><line x1="405" y1="70" x2="405" y2="170"/><line x1="405" y1="170" x2="470" y2="260"/>
+            <g filter="url(#glow)"><circle cx="120" cy="170" r="45" class="node agent"/><text x="120" y="176">Agent</text></g>
+            <g filter="url(#glow)"><circle cx="260" cy="90" r="38" class="node rag"/><text x="260" y="96">RAG</text></g>
+            <g filter="url(#glow)"><circle cx="405" cy="70" r="42" class="node embedding"/><text x="405" y="76">Embedding</text></g>
+            <g filter="url(#glow)"><circle cx="405" cy="170" r="46" class="node transformer"/><text x="405" y="176">Transformer</text></g>
+            <g filter="url(#glow)"><circle cx="470" cy="260" r="38" class="node attention"/><text x="470" y="266">Attention</text></g>
+            <g filter="url(#glow)"><circle cx="270" cy="240" r="44" class="node memory"/><text x="270" y="246">记忆系统</text></g>
+        </svg>
+    </div>
+</section>
+<section class="section-grid">
+    <div class="section-heading"><p class="eyebrow">Learning Paths</p><h2>学习路径</h2></div>
+    <div class="card-grid">
+        {% for path in paths %}
+        <a class="glass-card path-card" href="/courses/?path={{ path.path_id }}">
+            <span class="card-icon">{{ path.icon }}</span><h3>{{ path.title }}</h3><p>{{ path.description }}</p><small>{{ path.cards.count }} 张知识卡片</small>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+<section class="section-grid">
+    <div class="section-heading"><p class="eyebrow">Modules</p><h2>知识模块入口</h2></div>
+    <div class="module-grid">
+        {% for module in modules %}
+        <a class="glass-card module-card" style="--accent: {{ module.color }}" href="/courses/?module={{ module.key }}">
+            <span class="card-icon">{{ module.icon }}</span><h3>{{ module.name }}</h3><p>{{ module.cards.count }} 个主题 · {{ module.key }}</p>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
