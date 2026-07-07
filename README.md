@@ -396,38 +396,6 @@ macOS / Linux：
 ./.venv/bin/python manage.py runserver 127.0.0.1:8001
 ```
 
-## GitHub 上传建议
-
-### 应该上传
-
-- `ai_learning/`：Django 项目配置。
-- `learning/`：应用源码、模板、静态资源、迁移文件、管理命令。
-- `rebuild_assets/knowledge.json`：核心结构化知识数据。
-- `rebuild_assets/knowledge.ts`：结构化数据备份，便于人工核对。
-- `DJANGO_REBUILD_SPEC.md`：项目重构规格说明。
-- `manage.py`
-- `requirements.txt`
-- `requirements-ml.txt`
-- `README.md`
-- `start.ps1`
-- `start.bat`
-- `start.sh`
-- `.gitignore`
-- `.gitattributes`
-- `.env.example`
-- `scripts/bootstrap.py`
-- `scripts/check_environment.py`
-
-### 不应该上传
-
-- `.venv/`：虚拟环境，体积大且与本机路径绑定。
-- `__pycache__/`、`*.pyc`：Python 运行缓存。
-- `db.sqlite3`：本地生成数据库，用户应通过迁移和导入命令生成。
-- `models/`：真实 Embedding 模型，体积大，用户按 README 下载。
-- `.trae/`、`.vscode/`、`.idea/`：本地 IDE 或工具配置。
-- `conversations.json`、`rebuild_assets/conversations.json`：原始对话数据，可能包含私有内容；GitHub 只需要 `rebuild_assets/knowledge.json` 即可复刻网站内容。
-- `.env`、`.env.*`：本地环境变量或密钥。
-
 ## 数据说明
 
 网站内容来自：
