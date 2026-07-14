@@ -100,21 +100,19 @@ def create_venv(python_command):
 
 def install_requirements():
     if not internet_available():
-        print_hint("无法连接 pypi.org，依赖安装可能失败。请检查网络、代理或镜像源。")
-        print_hint("国内网络可尝试: python -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple")
+        print_hint("无法连接 pypi.org，请检查网络或代理后重试。")
     return run(
         [str(PYTHON), "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"],
         "升级 pip 基础工具",
         [
-            "如果网络超时，请配置代理或使用镜像源。",
-            "国内网络可手动执行: .venv 内 Python -m pip install --upgrade pip setuptools wheel -i https://pypi.tuna.tsinghua.edu.cn/simple",
+            "如果网络超时，请配置代理后重试。",
         ],
     ) and run(
         [str(PYTHON), "-m", "pip", "install", "-r", "requirements.txt"],
         "安装基础依赖",
         [
             "如果提示 pip 版本或构建失败，可先执行: python -m pip install --upgrade pip setuptools wheel。",
-            "如果提示网络超时，请切换网络、设置代理，或使用 PyPI 镜像源。",
+            "如果提示网络超时，请切换网络或设置代理后重试。",
             "如果提示权限问题，请确认正在使用项目内 .venv，而不是系统 Python。",
         ],
     )
@@ -122,12 +120,12 @@ def install_requirements():
 
 def install_ml_requirements():
     if not internet_available():
-        print_hint("无法连接 pypi.org，真实 Embedding 依赖安装可能失败。可以先不加 --with-ml 启动基础网站。")
+        print_hint("无法连接 pypi.org，请检查网络或代理后重试。")
     return run(
         [str(PYTHON), "-m", "pip", "install", "torch==2.5.1", "--index-url", "https://download.pytorch.org/whl/cpu"],
         "安装 PyTorch CPU 版本",
         [
-            "如果网络无法访问 download.pytorch.org，可以先不加 --with-ml，基础网站仍可启动。",
+            "如果网络无法访问 download.pytorch.org，请检查网络或配置代理。",
             "如果下载速度慢，请切换网络或配置代理后重试。",
         ],
     ) and run(
@@ -135,7 +133,7 @@ def install_ml_requirements():
         "安装真实 Embedding 依赖",
         [
             "如果安装失败，请检查网络是否能访问 PyPI。",
-            "真实模型是可选能力；不安装时系统会自动使用增强模拟 Embedding。",
+            "请确认网络通畅后重新运行启动脚本。",
         ],
     )
 
@@ -222,7 +220,7 @@ def main():
             print("\n启动准备未完成，请按上方提示修复问题后重新运行。")
             return 1
     if args["with_ml"] and not install_ml_requirements():
-        print("\n真实 Embedding 依赖安装未完成。可以去掉 --with-ml 先启动基础网站。")
+        print("\n真实 Embedding 依赖安装失败，启动终止。请按上方提示修复问题后重新运行。")
         return 1
     for step in [migrate_database, seed_data, check_environment]:
         if not step():
