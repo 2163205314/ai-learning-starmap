@@ -1,4 +1,3 @@
-$ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ProjectRoot
 
@@ -40,7 +39,9 @@ $pythonArgs = @()
 if ($python.Length -gt 1) {
     $pythonArgs = $python[1..($python.Length - 1)]
 }
-& $python[0] @pythonArgs scripts\bootstrap.py @args
+
+# 将 stderr 合并到 stdout，避免 pip 正常的进度输出触发 PowerShell 错误终止
+& $python[0] @pythonArgs scripts\bootstrap.py @args 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Startup failed. Please follow the hints above and retry." -ForegroundColor Red
     exit $LASTEXITCODE

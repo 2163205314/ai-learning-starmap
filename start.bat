@@ -1,26 +1,28 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-echo AI 学习星图 Windows CMD 启动脚本
+echo AI Learning Starmap - Windows CMD bootstrap
 
 where py >nul 2>nul
-if %errorlevel%==0 (
+if not errorlevel 1 (
   py -3.12 scripts\bootstrap.py %*
-  goto :done
+  call :check_result "py -3.12"
+  endlocal
+  exit /b
 )
 
 where python >nul 2>nul
-if %errorlevel%==0 (
+if not errorlevel 1 (
   python scripts\bootstrap.py %*
-  goto :done
+  call :check_result "python"
+  endlocal
+  exit /b
 )
 
-echo 未找到 Python。请安装 Python 3.12 或更高版本，并勾选 Add python.exe to PATH。
+echo Python was not found. Please install Python 3.12+ and enable "Add python.exe to PATH."
 exit /b 1
 
-:done
-if not %errorlevel%==0 (
-  echo 启动失败，请根据上方提示处理后重试。
-  exit /b %errorlevel%
-)
-endlocal
+:check_result
+if not errorlevel 1 exit /b 0
+echo Startup failed. Please follow the hints above and retry.
+exit /b 1

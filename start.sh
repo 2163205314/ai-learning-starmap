@@ -26,3 +26,8 @@ if [ -z "$PYTHON_CMD" ]; then
 fi
 
 "$PYTHON_CMD" scripts/bootstrap.py "$@"
+BOOTSTRAP_EXIT=$?
+if [ $BOOTSTRAP_EXIT -ne 0 ]; then
+  echo "启动失败，请按上方提示修复问题后重新运行。"
+  exit $BOOTSTRAP_EXIT
+fi
