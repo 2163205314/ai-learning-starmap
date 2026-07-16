@@ -182,14 +182,12 @@ def runserver(host_port):
 
 
 def parse_args():
-    args = {"host_port": "127.0.0.1:8000", "no_server": False, "with_ml": False}
+    args = {"host_port": "127.0.0.1:8000", "no_server": False}
     index = 1
     while index < len(sys.argv):
         item = sys.argv[index]
         if item == "--no-server":
             args["no_server"] = True
-        elif item == "--with-ml":
-            args["with_ml"] = True
         elif item == "--port" and index + 1 < len(sys.argv):
             args["host_port"] = f"127.0.0.1:{sys.argv[index + 1]}"
             index += 1
@@ -214,14 +212,11 @@ def main():
         print_hint("请安装 Python 3.12+ 后重新运行。")
         return 1
 
-    for step in [create_venv, install_requirements]:
+    for step in [create_venv, install_requirements, install_ml_requirements]:
         ok = step(python_command) if step == create_venv else step()
         if not ok:
             print("\n启动准备未完成，请按上方提示修复问题后重新运行。")
             return 1
-    if args["with_ml"] and not install_ml_requirements():
-        print("\n真实 Embedding 依赖安装失败，启动终止。请按上方提示修复问题后重新运行。")
-        return 1
     for step in [migrate_database, seed_data, check_environment]:
         if not step():
             print("\n启动准备未完成，请按上方提示修复问题后重新运行。")

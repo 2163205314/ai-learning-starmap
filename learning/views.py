@@ -99,29 +99,6 @@ def embedding_similarity(request):
     return JsonResponse({"a": a, "b": b, "score": score, "method": method, "details": details})
 
 
-SEMANTIC_GROUPS = {
-    "猫科动物": {"猫", "虎", "老虎", "狮子", "豹", "雪豹", "猞猁"},
-    "宠物": {"猫", "狗", "兔子", "仓鼠", "鼠", "老鼠", "豚鼠", "鹦鹉"},
-    "啮齿动物": {"鼠", "老鼠", "仓鼠", "豚鼠", "松鼠"},
-    "动物": {"猫", "狗", "兔子", "仓鼠", "鼠", "老鼠", "虎", "老虎", "狮子", "豹", "牛", "羊", "马", "鸟", "鱼"},
-    "水果": {"苹果", "香蕉", "葡萄", "橙子", "梨", "桃子", "西瓜", "草莓"},
-    "城市": {"北京", "上海", "广州", "深圳"},
-    "编程语言": {"Python", "Java", "JavaScript", "Go", "python", "java"},
-    "电商": {"退款", "退货", "换货", "订单"},
-    "天气": {"天气", "下雨", "雨伞", "晴天"},
-    "情绪": {"快乐", "悲伤", "开心", "难过"},
-}
-
-SEMANTIC_ALIASES = {
-    "老虎": "虎",
-    "小猫": "猫",
-    "猫咪": "猫",
-    "老鼠": "鼠",
-    "耗子": "鼠",
-    "python": "Python",
-    "java": "Java",
-}
-
 _EMBEDDING_MODEL = None
 _EMBEDDING_IMPORT_ERROR = None
 
@@ -131,17 +108,11 @@ def calculate_similarity(a, b):
         return 0, "empty", {"reason": "请输入两个词"}
     if a == b:
         return 100, "exact-match", {"reason": "两个输入完全一致"}
-    try:
-        from sentence_transformers.util import cos_sim
-        model = get_embedding_model()
-        embeddings = model.encode([a, b])
-        score = float(cos_sim(embeddings[0], embeddings[1])[0][0])
-        return round(score * 100, 2), "sentence-transformers", {"dimension": len(embeddings[0]), "vectorPreviewA": [round(float(x), 4) for x in embeddings[0][:8]], "vectorPreviewB": [round(float(x), 4) for x in embeddings[1][:8]]}
-    except Exception as exc:
-        score, method, details = fallback_similarity(a, b)
-        details["modelStatus"] = "真实 Embedding 模型未加载，当前使用增强模拟兜底"
-        details["modelError"] = str(exc)
-        return score, method, details
+    from sentence_transformers.util import cos_sim
+    model = get_embedding_model()
+    embeddings = model.encode([a, b])
+    score = float(cos_sim(embeddings[0], embeddings[1])[0][0])
+    return round(score * 100, 2), "sentence-transformers", {"dimension": len(embeddings[0]), "vectorPreviewA": [round(float(x), 4) for x in embeddings[0][:8]], "vectorPreviewB": [round(float(x), 4) for x in embeddings[1][:8]]}
 
 
 def get_embedding_model():
@@ -158,46 +129,3 @@ def get_embedding_model():
     except Exception as exc:
         _EMBEDDING_IMPORT_ERROR = exc
         raise exc
-
-
-def fallback_similarity(a, b):
-    norm_a = normalize_semantic_word(a)
-    norm_b = normalize_semantic_word(b)
-    categories_a = categories_for_word(norm_a)
-    categories_b = categories_for_word(norm_b)
-    shared_categories = categories_a & categories_b
-    if shared_categories:
-        score = simulated_category_score(norm_a, norm_b, shared_categories)
-        return score, "enhanced-simulated-semantic", {"reason": f"共享语义类别：{'、'.join(sorted(shared_categories))}，增强模拟结果", "sharedCategories": sorted(shared_categories)}
-    set_a = set(norm_a.lower())
-    set_b = set(norm_b.lower())
-    union = set_a | set_b
-    char_score = 0 if not union else len(set_a & set_b) / len(union) * 100
-    length_score = min(len(norm_a), len(norm_b)) / max(len(norm_a), len(norm_b)) * 20 if norm_a and norm_b else 0
-    score = min(65, char_score * 0.75 + length_score)
-    return round(score, 2), "character-fallback", {"reason": "未命中语义词库，使用字符集合与长度相似度兜底，模拟结果"}
-
-
-def normalize_semantic_word(word):
-    value = word.strip()
-    return SEMANTIC_ALIASES.get(value, value)
-
-
-def categories_for_word(word):
-    return {category for category, words in SEMANTIC_GROUPS.items() if word in words}
-
-
-def simulated_category_score(a, b, shared_categories):
-    if a == b:
-        return 100
-    if "猫科动物" in shared_categories:
-        return 86
-    if "啮齿动物" in shared_categories:
-        return 84
-    if "宠物" in shared_categories:
-        return 76
-    if "动物" in shared_categories:
-        return 68
-    if "电商" in shared_categories:
-        return 78
-    return 72

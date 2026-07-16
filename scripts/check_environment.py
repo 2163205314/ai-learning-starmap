@@ -58,14 +58,16 @@ def check_required_packages():
     return ok
 
 
-def check_optional_ml():
+def check_ml():
     torch_version = package_version("torch")
     st_version = package_version("sentence-transformers")
     model_dir = ROOT / "models" / "paraphrase-multilingual-MiniLM-L12-v2"
-    print("\n可选真实 Embedding：")
-    status(bool(torch_version), "torch", torch_version or "未安装", cmd("-m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu"))
-    status(bool(st_version), "sentence-transformers", st_version or "未安装", cmd("-m pip install -r requirements-ml.txt"))
-    status(model_dir.exists(), "本地模型目录", str(model_dir) if model_dir.exists() else "未下载", "首次使用接口时会自动尝试联网下载；网络不稳定时可按 README 的真实模型章节手动下载。")
+    ok = True
+    print("\n真实 Embedding 依赖：")
+    ok = status(bool(torch_version), "torch", torch_version or "未安装", cmd("-m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu")) and ok
+    ok = status(bool(st_version), "sentence-transformers", st_version or "未安装", cmd("-m pip install -r requirements-ml.txt")) and ok
+    ok = status(model_dir.exists(), "本地模型目录", str(model_dir) if model_dir.exists() else "未下载", "请确保模型已下载至 models/paraphrase-multilingual-MiniLM-L12-v2") and ok
+    return ok
 
 
 def check_files():
@@ -99,13 +101,12 @@ def check_database():
 def main():
     print("AI 学习星图环境检测")
     print(f"项目目录: {ROOT}\n")
-    checks = [check_python(), check_venv(), check_required_packages(), check_files(), check_database()]
-    check_optional_ml()
+    checks = [check_python(), check_venv(), check_required_packages(), check_files(), check_database(), check_ml()]
     print("\n结论:")
     if all(checks):
-        print(f"基础环境可运行。启动命令: {cmd('manage.py runserver')}")
+        print(f"全部环境就绪。启动命令: {cmd('manage.py runserver')}")
     else:
-        print("基础环境还未完全就绪，请按上方处理建议修复后再次运行检测。")
+        print("环境还未完全就绪，请按上方处理建议修复后再次运行检测。")
 
 
 if __name__ == "__main__":
