@@ -20,67 +20,102 @@ AI 学习星图是一个基于 **Python + Django + SQLite + Django Templates + �
 
 ## 使用 Docker 启动
 
-请先安装并启动 Docker Desktop（Windows / macOS）或 Docker Engine（Linux），然后在项目根目录执行以下命令。
+请先安装并启动 Docker Desktop（Windows / macOS）或 Docker Engine + Docker Compose（Linux）。项目使用固定名称 `ai-learning-starmap` 的容器，并把当前仓库挂载到 `/app`，因此可以直接在容器内执行 Git 命令。
 
-### 1. 构建镜像
+### 1. 准备宿主机配置
+
+复制环境变量示例：
+
+Windows PowerShell：
+
+```powershell
+Copy-Item .env.example .env
+```
+
+macOS / Linux：
 
 ```bash
-docker build -t ai-learning-starmap .
+cp .env.example .env
 ```
 
-### 2. 创建并启动容器
+编辑 `.env` 中的 `HOST_HOME`，填写宿主机用户主目录的绝对路径，使用正斜杠且结尾不要加 `/`：
+
+```dotenv
+# Windows
+HOST_HOME=C:/Users/your-name
+
+# macOS
+HOST_HOME=/Users/your-name
+
+# Linux
+HOST_HOME=/home/your-name
+```
+
+Compose 会只读挂载宿主机的 `.gitconfig` 和 `.ssh`，入口脚本再复制到容器用户目录并设置正确权限。Git 身份和 GitHub SSH 密钥因此可以在容器内使用，但不会被写入镜像或提交到仓库。
+
+Linux 用户如果 UID/GID 不是 `1000`，还应把 `.env` 中的 `APP_UID`、`APP_GID` 改为以下命令的输出：
 
 ```bash
-docker run -d --name ai-learning-starmap -p 8000:8000 -v ai-learning-data:/app/data ai-learning-starmap
+id -u
+id -g
 ```
 
-首次启动会自动执行 Django 数据库迁移，并在数据库为空时导入初始学习数据。`ai-learning-data` 是 Docker 命名卷，删除或重建容器后数据仍会保留。
+### 2. 首次创建固定容器
 
-容器启动后，在本机浏览器访问：
-
-```text
-http://localhost:8000/
-```
-
-如果从局域网中的其他设备连接，请将 `192.168.1.10` 替换为运行 Docker 的主机 IP：
+下面的命令只需在第一次执行，或 Dockerfile / Compose 配置发生变化时执行：
 
 ```bash
-docker run -d --name ai-learning-starmap -p 8000:8000 -v ai-learning-data:/app/data -e "DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,192.168.1.10" ai-learning-starmap
+docker compose up -d --build
 ```
 
-然后在其他设备访问 `http://192.168.1.10:8000/`。同时需要确保主机防火墙允许 TCP 8000 端口入站连接。
+Compose 固定使用容器名 `ai-learning-starmap`，并设置 `restart: unless-stopped`。首次启动会自动执行数据库迁移，并在数据库为空时导入学习数据。数据库继续保存在原有固定命名卷 `ai-learning-data` 中。
 
-如果主机的 8000 端口已被占用，可以把主机端口改成 8001；容器内部端口仍保持为 8000：
+如果此前已经按旧版 README 用 `docker run` 创建了同名容器，只需做一次迁移：先执行 `docker stop ai-learning-starmap` 和 `docker rm ai-learning-starmap`，再执行上面的 Compose 命令。旧容器会被删除，但 `ai-learning-data` 命名卷不会删除，学习数据会继续使用。
+
+日常启动和停止已有容器，不会新建容器：
 
 ```bash
-docker run -d --name ai-learning-starmap -p 8001:8000 -v ai-learning-data:/app/data ai-learning-starmap
+# 启动已有容器
+docker compose start
+
+# 停止但保留容器
+docker compose stop
+
+# 重启已有容器
+docker compose restart
+
+# 查看状态和日志
+docker compose ps
+docker compose logs -f app
 ```
 
-此时访问 `http://localhost:8001/`。
+不要把 `docker compose down` 作为日常停止命令，因为它会删除容器；数据库命名卷仍会保留，但下次 `up` 会重新创建容器。
 
-### 3. 日常管理
+### 3. 在容器内 Pull 和 Push
+
+先验证容器能读取 Git 配置和 GitHub 仓库：
 
 ```bash
-# 查看运行状态
-docker ps
-
-# 查看实时日志
-docker logs -f ai-learning-starmap
-
-# 停止容器
-docker stop ai-learning-starmap
-
-# 再次启动已有容器
-docker start ai-learning-starmap
+docker compose exec app git config --global --list
+docker compose exec app git remote -v
+docker compose exec app git ls-remote origin HEAD
 ```
 
-如需使用自定义 Django 配置，可以先复制 `.env.example` 为 `.env`，修改其中的密钥、调试模式和允许访问的主机，再通过环境文件启动：
+然后可以直接操作当前分支：
 
 ```bash
-docker run -d --name ai-learning-starmap -p 8000:8000 -v ai-learning-data:/app/data --env-file .env ai-learning-starmap
+docker compose exec app git status
+docker compose exec app git pull origin main
+docker compose exec app git push origin main
 ```
 
-停止容器不会删除数据。若要换用重新构建的镜像，请先停止并删除旧容器，再用相同的 `-v ai-learning-data:/app/data` 参数创建新容器，即可继续使用原数据库。
+`/app` 是宿主机当前项目目录的挂载，因此容器内 Pull 下来的文件会立即出现在宿主机，宿主机修改也会立即出现在容器。代码更新后执行 `docker compose restart` 让 Django 重新加载代码。
+
+### 4. 连接网站
+
+容器启动后访问 `http://localhost:8000/`。如果 8000 端口被占用，在 `.env` 中设置 `HOST_PORT=8001`，然后访问 `http://localhost:8001/`。
+
+如果从局域网其他设备访问，请把 `.env` 中的 `DJANGO_ALLOWED_HOSTS` 加上运行 Docker 的主机 IP，例如 `DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost,192.168.1.10`，并确保主机防火墙允许对应的 TCP 端口。
 
 ## 从 GitHub 克隆后启动
 
