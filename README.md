@@ -20,100 +20,78 @@ AI 学习星图是一个基于 **Python + Django + SQLite + Django Templates + �
 
 ## 使用 Docker 启动
 
-请先安装并启动 Docker Desktop（Windows / macOS）或 Docker Engine + Docker Compose（Linux）。项目使用固定名称 `ai-learning-starmap` 的容器，并把当前仓库挂载到 `/app`，因此可以直接在容器内执行 Git 命令。
+请先安装并启动 Docker Desktop（Windows / macOS）或 Docker Engine（Linux）。项目使用固定名称 `ai-learning-starmap` 的容器，并把当前仓库挂载到 `/app`，因此可以直接在容器内执行 Git 命令。
 
-### 1. 准备宿主机配置
-
-复制环境变量示例：
-
-Windows PowerShell：
-
-```powershell
-Copy-Item .env.example .env
-```
-
-macOS / Linux：
+### 1. 构建镜像
 
 ```bash
-cp .env.example .env
+docker build -t ai-learning-starmap .
 ```
 
-编辑 `.env` 中的 `HOST_HOME`，填写宿主机用户主目录的绝对路径，使用正斜杠且结尾不要加 `/`：
+镜像内已安装 Git 和 OpenSSH。宿主机的 Git 配置与 SSH 密钥不会写入镜像，而是在创建容器时只读挂载。
 
-```dotenv
-# Windows
-HOST_HOME=C:/Users/your-name
+### 2. 用一条命令创建固定容器
 
-# macOS
-HOST_HOME=/Users/your-name
+如果项目根目录还没有 `.env`，先复制示例：Windows PowerShell 执行 `Copy-Item .env.example .env`，macOS / Linux 执行 `cp .env.example .env`。
 
-# Linux
-HOST_HOME=/home/your-name
-```
-
-Compose 会只读挂载宿主机的 `.gitconfig` 和 `.ssh`，入口脚本再复制到容器用户目录并设置正确权限。Git 身份和 GitHub SSH 密钥因此可以在容器内使用，但不会被写入镜像或提交到仓库。
-
-Linux 用户如果 UID/GID 不是 `1000`，还应把 `.env` 中的 `APP_UID`、`APP_GID` 改为以下命令的输出：
+以下是一条完整的 `docker run` 命令，PowerShell、macOS 和 Linux Shell 均可直接执行：
 
 ```bash
-id -u
-id -g
+docker run -d --name ai-learning-starmap --restart unless-stopped -p 8000:8000 --env-file .env -v "${PWD}:/app" -v "ai-learning-data:/app/data" -v "${HOME}/.gitconfig:/run/host-gitconfig:ro" -v "${HOME}/.ssh:/run/host-ssh:ro" ai-learning-starmap
 ```
 
-### 2. 首次创建固定容器
+这条命令只执行一次：
 
-下面的命令只需在第一次执行，或 Dockerfile / Compose 配置发生变化时执行：
+- `--name ai-learning-starmap` 固定容器名称。
+- `--restart unless-stopped` 让 Docker 重启后自动恢复容器。
+- `${PWD}:/app` 挂载当前 Git 仓库，容器内外共享代码和 `.git`。
+- `${HOME}/.gitconfig` 和 `${HOME}/.ssh` 提供宿主机 Git 身份及 GitHub SSH 认证。
+- `ai-learning-data:/app/data` 持久化 SQLite 数据库。
 
-```bash
-docker compose up -d --build
-```
+首次启动会自动执行数据库迁移，并在数据库为空时导入学习数据。
 
-Compose 固定使用容器名 `ai-learning-starmap`，并设置 `restart: unless-stopped`。首次启动会自动执行数据库迁移，并在数据库为空时导入学习数据。数据库继续保存在原有固定命名卷 `ai-learning-data` 中。
+如果已经存在此前创建的同名容器，需要先执行一次 `docker stop ai-learning-starmap` 和 `docker rm ai-learning-starmap`，再执行新的创建命令。该操作不会删除 `ai-learning-data` 数据卷。
 
-如果此前已经按旧版 README 用 `docker run` 创建了同名容器，只需做一次迁移：先执行 `docker stop ai-learning-starmap` 和 `docker rm ai-learning-starmap`，再执行上面的 Compose 命令。旧容器会被删除，但 `ai-learning-data` 命名卷不会删除，学习数据会继续使用。
-
-日常启动和停止已有容器，不会新建容器：
+日常只操作这个已有容器，不要再次执行 `docker run`：
 
 ```bash
 # 启动已有容器
-docker compose start
+docker start ai-learning-starmap
 
 # 停止但保留容器
-docker compose stop
+docker stop ai-learning-starmap
 
 # 重启已有容器
-docker compose restart
+docker restart ai-learning-starmap
 
 # 查看状态和日志
-docker compose ps
-docker compose logs -f app
+docker ps -a --filter "name=ai-learning-starmap"
+docker logs -f ai-learning-starmap
 ```
-
-不要把 `docker compose down` 作为日常停止命令，因为它会删除容器；数据库命名卷仍会保留，但下次 `up` 会重新创建容器。
 
 ### 3. 在容器内 Pull 和 Push
 
 先验证容器能读取 Git 配置和 GitHub 仓库：
 
 ```bash
-docker compose exec app git config --global --list
-docker compose exec app git remote -v
-docker compose exec app git ls-remote origin HEAD
+docker exec ai-learning-starmap git config --global --list
+docker exec ai-learning-starmap git remote -v
+docker exec ai-learning-starmap git ls-remote origin HEAD
 ```
 
 然后可以直接操作当前分支：
 
 ```bash
-docker compose exec app git status
-docker compose exec app git pull origin main
-docker compose exec app git push origin main
+docker exec ai-learning-starmap git status
+docker exec ai-learning-starmap git pull origin main
+docker exec ai-learning-starmap git push origin main
 ```
 
-`/app` 是宿主机当前项目目录的挂载，因此容器内 Pull 下来的文件会立即出现在宿主机，宿主机修改也会立即出现在容器。代码更新后执行 `docker compose restart` 让 Django 重新加载代码。
+`/app` 是宿主机当前项目目录的挂载，因此容器内 Pull 下来的文件会立即出现在宿主机，宿主机修改也会立即出现在容器。代码更新后执行 `docker restart ai-learning-starmap` 让 Django 重新加载代码。
 
 ### 4. 连接网站
 
-容器启动后访问 `http://localhost:8000/`。如果 8000 端口被占用，在 `.env` 中设置 `HOST_PORT=8001`，然后访问 `http://localhost:8001/`。
+容器启动后访问 `http://localhost:8000/`。如果 8000 端口被占用，把创建命令中的 `-p 8000:8000` 改成 `-p 8001:8000`，然后访问 `http://localhost:8001/`。
 
 如果从局域网其他设备访问，请把 `.env` 中的 `DJANGO_ALLOWED_HOSTS` 加上运行 Docker 的主机 IP，例如 `DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost,192.168.1.10`，并确保主机防火墙允许对应的 TCP 端口。
 
