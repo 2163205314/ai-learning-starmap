@@ -18,6 +18,70 @@ AI 学习星图是一个基于 **Python + Django + SQLite + Django Templates + �
 - 网络：基础功能不需要联网；安装真实 Embedding 模型需要联网下载 PyTorch 和 Hugging Face 模型。
 - 不需要 Node.js、React、Vite、Tailwind。
 
+## 使用 Docker 启动
+
+请先安装并启动 Docker Desktop（Windows / macOS）或 Docker Engine（Linux），然后在项目根目录执行以下命令。
+
+### 1. 构建镜像
+
+```bash
+docker build -t ai-learning-starmap .
+```
+
+### 2. 创建并启动容器
+
+```bash
+docker run -d --name ai-learning-starmap -p 8000:8000 -v ai-learning-data:/app/data ai-learning-starmap
+```
+
+首次启动会自动执行 Django 数据库迁移，并在数据库为空时导入初始学习数据。`ai-learning-data` 是 Docker 命名卷，删除或重建容器后数据仍会保留。
+
+容器启动后，在本机浏览器访问：
+
+```text
+http://localhost:8000/
+```
+
+如果从局域网中的其他设备连接，请将 `192.168.1.10` 替换为运行 Docker 的主机 IP：
+
+```bash
+docker run -d --name ai-learning-starmap -p 8000:8000 -v ai-learning-data:/app/data -e "DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,192.168.1.10" ai-learning-starmap
+```
+
+然后在其他设备访问 `http://192.168.1.10:8000/`。同时需要确保主机防火墙允许 TCP 8000 端口入站连接。
+
+如果主机的 8000 端口已被占用，可以把主机端口改成 8001；容器内部端口仍保持为 8000：
+
+```bash
+docker run -d --name ai-learning-starmap -p 8001:8000 -v ai-learning-data:/app/data ai-learning-starmap
+```
+
+此时访问 `http://localhost:8001/`。
+
+### 3. 日常管理
+
+```bash
+# 查看运行状态
+docker ps
+
+# 查看实时日志
+docker logs -f ai-learning-starmap
+
+# 停止容器
+docker stop ai-learning-starmap
+
+# 再次启动已有容器
+docker start ai-learning-starmap
+```
+
+如需使用自定义 Django 配置，可以先复制 `.env.example` 为 `.env`，修改其中的密钥、调试模式和允许访问的主机，再通过环境文件启动：
+
+```bash
+docker run -d --name ai-learning-starmap -p 8000:8000 -v ai-learning-data:/app/data --env-file .env ai-learning-starmap
+```
+
+停止容器不会删除数据。若要换用重新构建的镜像，请先停止并删除旧容器，再用相同的 `-v ai-learning-data:/app/data` 参数创建新容器，即可继续使用原数据库。
+
 ## 从 GitHub 克隆后启动
 
 推荐优先使用一键启动脚本。脚本会自动检查 Python 版本、创建 `.venv`、安装依赖、执行数据库迁移、导入学习数据、运行环境检测，并在安装包失败、网络不可达、数据库未初始化、端口占用等场景给出提示。
