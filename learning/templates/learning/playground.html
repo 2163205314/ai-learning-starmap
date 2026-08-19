@@ -1,0 +1,60 @@
+{% extends "learning/base.html" %}
+{% load static %}
+{% block title %}代码工坊 · AI 学习星图{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{% static 'learning/css/pages/playground.css' %}">{% endblock %}
+{% block content %}
+<section class="playground-heading">
+    <div>
+        <p class="eyebrow">// CODE WORKSHOP</p>
+        <h1>代码工坊<span>_</span></h1>
+        <p>在隔离的浏览器 Worker 中编写并运行 JavaScript，用真实测试反馈检验理解。</p>
+    </div>
+    <div class="runtime-status"><i></i><span>RUNTIME</span><b>JS WORKER ONLINE</b><small>TIMEOUT 2000MS</small></div>
+</section>
+
+<section class="playground-shell" id="playgroundApp" data-worker-url="{% static 'learning/js/code-runner.worker.js' %}">
+    <aside class="challenge-rail glass-card">
+        <div class="rail-heading"><span>MISSIONS</span><b id="missionProgress">0/{{ challenges|length }}</b></div>
+        <div class="challenge-list" role="list">
+            {% for challenge in challenges %}
+            <button class="challenge-item {% if forloop.first %}active{% endif %}" type="button" data-challenge-id="{{ challenge.id }}">
+                <span>{{ challenge.index }}</span>
+                <div><b>{{ challenge.title }}</b><small>{{ challenge.difficulty }} · +{{ challenge.xp }} XP</small></div>
+                <i aria-hidden="true">›</i>
+            </button>
+            {% endfor %}
+        </div>
+        <div class="rail-note"><span>SAFETY</span><p>代码仅在浏览器临时 Worker 中运行，不会发送到 Django 服务器。</p></div>
+    </aside>
+
+    <div class="workspace-column">
+        <article class="mission-brief glass-card">
+            <div class="mission-meta"><span id="challengeIndex">MISSION_01</span><b id="challengeDifficulty">入门</b><em id="challengeXp">+120 XP</em></div>
+            <h2 id="challengeTitle">聚合偶数能量</h2>
+            <p id="challengeBrief"></p>
+            <div class="concept-tags" id="challengeConcepts"></div>
+            <details><summary>需要提示？</summary><p id="challengeHint"></p></details>
+        </article>
+
+        <section class="code-workspace glass-card">
+            <div class="workspace-tabs">
+                <div><span class="active"><i>JS</i> solution.js</span></div>
+                <div class="editor-actions"><span id="draftState">草稿已保存</span><button type="button" id="resetCode">重置</button><button class="run-button" type="button" id="runCode"><kbd>Ctrl</kbd><kbd>↵</kbd> 运行代码</button></div>
+            </div>
+            <div class="editor-frame">
+                <div class="line-numbers" id="lineNumbers" aria-hidden="true"></div>
+                <textarea id="codeEditor" aria-label="JavaScript 代码编辑器" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+            </div>
+        </section>
+
+        <section class="output-console glass-card" aria-live="polite">
+            <div class="output-head"><div><span>OUTPUT</span><span>TESTS</span></div><button type="button" id="clearOutput">CLEAR</button></div>
+            <div class="output-body" id="outputBody">
+                <p class="output-placeholder"><span>›</span> 等待运行。按 Ctrl + Enter 执行当前代码。</p>
+            </div>
+        </section>
+    </div>
+</section>
+{{ challenges|json_script:"playground-data" }}
+{% endblock %}
+{% block scripts %}<script src="{% static 'learning/js/playground.js' %}" defer></script>{% endblock %}

@@ -7,6 +7,7 @@ AI 学习星图是一个基于 **Python + Django + SQLite + Django Templates + �
 - 首页：深空星图首页、学习路径、知识模块入口、概念星图。
 - 课程学习：按模块浏览知识卡片，展开章节，查看代码示例，完成测验。
 - 互动实验室：RAG 流程、Chunk 调节、真实/模拟 Embedding 相似度、Attention 拆解。
+- 代码工坊：在浏览器 Worker 中编写 JavaScript，获得运行输出、测试反馈和本地草稿保存。
 - 项目实战：智能客服 RAG 项目 6 步构建、Token 预算、延迟估算。
 - 概念词典：概念搜索、分类筛选、关联概念跳转。
 - Django Admin：管理模块、卡片、章节、概念、路径、测验。
@@ -320,9 +321,12 @@ http://127.0.0.1:8000/
 - 首页：`http://127.0.0.1:8000/`
 - 课程学习：`http://127.0.0.1:8000/courses/`
 - 互动实验室：`http://127.0.0.1:8000/lab/`
+- 代码工坊：`http://127.0.0.1:8000/playground/`
 - 项目实战：`http://127.0.0.1:8000/project/`
 - 概念词典：`http://127.0.0.1:8000/glossary/`
 - 后台管理：`http://127.0.0.1:8000/admin/`
+
+项目的模块边界、前端分层和未来多语言代码执行安全方案见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。
 
 ## 可选：启用真实 Embedding 模型
 

@@ -1,45 +1,94 @@
 {% extends "learning/base.html" %}
+{% load static %}
 {% block title %}AI 学习星图 · 首页{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{% static 'learning/css/pages/home.css' %}">{% endblock %}
 {% block content %}
-<section class="hero">
+<section class="hero home-hero">
     <div class="hero-copy">
-        <p class="eyebrow">Local Django Learning Atlas</p>
-        <h1>AI 学习星图</h1>
-        <p class="hero-subtitle">从 Agent 到 RAG，再到 Transformer 原理，用路径、卡片、实验和项目把知识连成星系。</p>
+        <div class="status-chip"><span></span>LEARNING SYSTEM / READY</div>
+        <p class="eyebrow">Build knowledge. Run ideas.</p>
+        <h1>把 AI 知识<br><em>编译成能力</em></h1>
+        <p class="hero-subtitle">不止阅读概念。沿着结构化路径学习，在互动实验中拆解原理，再进入代码工坊亲手运行每一个想法。</p>
         <div class="hero-actions">
-            <a class="glow-btn" href="/courses/">开始学习</a>
-            <a class="glow-btn secondary" href="/glossary/">探索概念</a>
+            <a class="glow-btn" href="{% url 'courses' %}"><span>启动学习路径</span><b>→</b></a>
+            <a class="glow-btn secondary" href="{% url 'playground' %}"><span class="button-code-icon">&lt;/&gt;</span> 打开代码工坊</a>
+        </div>
+        <div class="hero-proof" aria-label="平台内容统计">
+            <div><strong>{{ knowledge_card_count|stringformat:"02d" }}</strong><span>知识卡片</span></div>
+            <div><strong>{{ concept_count|stringformat:"02d" }}</strong><span>核心概念</span></div>
+            <div><strong>{{ paths|length|stringformat:"02d" }}</strong><span>学习路径</span></div>
         </div>
     </div>
-    <div class="orbital glass-card">
-        <svg viewBox="0 0 560 360" role="img" aria-label="概念星图">
-            <defs><filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-            <line x1="120" y1="170" x2="260" y2="90"/><line x1="120" y1="170" x2="270" y2="240"/><line x1="120" y1="170" x2="405" y2="170"/><line x1="260" y1="90" x2="405" y2="70"/><line x1="405" y1="70" x2="405" y2="170"/><line x1="405" y1="170" x2="470" y2="260"/>
-            <g filter="url(#glow)"><circle cx="120" cy="170" r="45" class="node agent"/><text x="120" y="176">Agent</text></g>
-            <g filter="url(#glow)"><circle cx="260" cy="90" r="38" class="node rag"/><text x="260" y="96">RAG</text></g>
-            <g filter="url(#glow)"><circle cx="405" cy="70" r="42" class="node embedding"/><text x="405" y="76">Embedding</text></g>
-            <g filter="url(#glow)"><circle cx="405" cy="170" r="46" class="node transformer"/><text x="405" y="176">Transformer</text></g>
-            <g filter="url(#glow)"><circle cx="470" cy="260" r="38" class="node attention"/><text x="470" y="266">Attention</text></g>
-            <g filter="url(#glow)"><circle cx="270" cy="240" r="44" class="node memory"/><text x="270" y="246">记忆系统</text></g>
-        </svg>
+    <div class="hero-console glass-card" aria-label="AI 学习路径终端预览">
+        <div class="console-bar"><div><i></i><i></i><i></i></div><span>atlas-terminal — zsh</span><b>⌁</b></div>
+        <div class="console-body">
+            <p><span class="prompt-mark">learner@atlas</span>:<span class="path-mark">~</span>$ atlas init --path ai-engineer</p>
+            <p class="console-muted">✓ 正在载入学习图谱...</p>
+            <div class="console-tree">
+                <span>01</span><b>Agent Systems</b><em>READY</em>
+                <span>02</span><b>RAG Pipeline</b><em>READY</em>
+                <span>03</span><b>Embeddings</b><em>READY</em>
+                <span>04</span><b>Transformer</b><em>READY</em>
+                <span>05</span><b>Engineering</b><em>READY</em>
+            </div>
+            <p><span class="prompt-mark">learner@atlas</span>:<span class="path-mark">~</span>$ run first_mission.js<span class="terminal-caret"></span></p>
+            <div class="console-output"><span>OUTPUT</span><strong>Knowledge compiled successfully.</strong><small>+120 XP · NODE UNLOCKED</small></div>
+        </div>
+        <div class="console-orbit" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     </div>
 </section>
-<section class="section-grid">
-    <div class="section-heading"><p class="eyebrow">Learning Paths</p><h2>学习路径</h2></div>
-    <div class="card-grid">
+
+<section class="learning-loop" aria-label="学习闭环">
+    <article><span>01</span><div><b>理解</b><small>结构化知识卡片</small></div></article>
+    <i>→</i>
+    <article><span>02</span><div><b>实验</b><small>可视化原理模拟</small></div></article>
+    <i>→</i>
+    <article><span>03</span><div><b>编码</b><small>即时运行与测试</small></div></article>
+    <i>→</i>
+    <article><span>04</span><div><b>构建</b><small>完整项目实践</small></div></article>
+</section>
+
+<section class="section-grid home-section">
+    <div class="section-heading heading-command"><div><p class="eyebrow">// LEARNING PATHS</p><h2>选择你的进化路线</h2></div><a href="{% url 'courses' %}">查看全部路径 <span>↗</span></a></div>
+    <div class="card-grid path-grid">
         {% for path in paths %}
-        <a class="glass-card path-card" href="/courses/?path={{ path.path_id }}">
-            <span class="card-icon">{{ path.icon }}</span><h3>{{ path.title }}</h3><p>{{ path.description }}</p><small>{{ path.cards.count }} 张知识卡片</small>
+        <a class="glass-card path-card command-card" href="{% url 'courses' %}?path={{ path.path_id }}">
+            <div class="command-card-top"><span class="card-index">PATH_{{ forloop.counter|stringformat:"02d" }}</span><span class="card-icon">{{ path.icon }}</span></div>
+            <h3>{{ path.title }}</h3><p>{{ path.description }}</p>
+            <div class="path-card-meta"><small>{{ path.cards.count }} NODES</small><span>进入路径 →</span></div>
         </a>
         {% endfor %}
     </div>
 </section>
-<section class="section-grid">
-    <div class="section-heading"><p class="eyebrow">Modules</p><h2>知识模块入口</h2></div>
+
+<section class="code-mission glass-card">
+    <div class="code-mission-copy">
+        <p class="eyebrow">// INTERACTIVE CODING</p>
+        <h2>写下答案，<br><span>让结果立即说话。</span></h2>
+        <p>每道练习都配有任务目标、隐藏测试、运行输出和即时反馈。当前支持浏览器端 JavaScript，后续可接入隔离的 Python 执行节点。</p>
+        <ul><li>毫秒级运行反馈</li><li>测试用例逐项验证</li><li>草稿自动保存在本地</li></ul>
+        <a class="glow-btn" href="{% url 'playground' %}">进入代码工坊 <b>→</b></a>
+    </div>
+    <div class="code-preview" aria-hidden="true">
+        <div class="code-preview-head"><span>challenge.js</span><small>JavaScript</small></div>
+        <ol>
+            <li><code><i>function</i> sumEven(numbers) {</code></li>
+            <li><code>&nbsp;&nbsp;<i>return</i> numbers</code></li>
+            <li><code>&nbsp;&nbsp;&nbsp;&nbsp;.filter(n =&gt; n % 2 === 0)</code></li>
+            <li><code>&nbsp;&nbsp;&nbsp;&nbsp;.reduce((sum, n) =&gt; sum + n, 0);</code></li>
+            <li><code>}</code></li>
+        </ol>
+        <div class="test-result"><span>● TEST RUN</span><b>3 / 3 PASSED</b><small>Execution 12ms</small></div>
+    </div>
+</section>
+
+<section class="section-grid home-section module-section">
+    <div class="section-heading heading-command"><div><p class="eyebrow">// KNOWLEDGE MODULES</p><h2>探索知识节点</h2></div></div>
     <div class="module-grid">
         {% for module in modules %}
-        <a class="glass-card module-card" style="--accent: {{ module.color }}" href="/courses/?module={{ module.key }}">
-            <span class="card-icon">{{ module.icon }}</span><h3>{{ module.name }}</h3><p>{{ module.cards.count }} 个主题 · {{ module.key }}</p>
+        <a class="glass-card module-card" style="--accent: {{ module.color }}" href="{% url 'courses' %}?module={{ module.key }}">
+            <div class="module-signal"><i></i><span>{{ module.key|upper }}</span></div>
+            <span class="card-icon">{{ module.icon }}</span><h3>{{ module.name }}</h3><p>{{ module.cards.count }} 个主题</p><b>OPEN NODE ↗</b>
         </a>
         {% endfor %}
     </div>

@@ -7,6 +7,7 @@ from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
 from .models import Concept, KnowledgeCard, KnowledgeSection, LearningPath, Module, QuizQuestion
+from .playground_catalog import PLAYGROUND_CHALLENGES
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,7 +27,17 @@ def home(request):
     modules = Module.objects.all()
     paths = LearningPath.objects.prefetch_related("cards")
     concepts = Concept.objects.filter(concept_id__in=["c-agent", "c-rag", "c-embedding", "c-transformer", "c-attention", "c-memory"])
-    return render(request, "learning/home.html", {"modules": modules, "paths": paths, "star_concepts": concepts})
+    return render(
+        request,
+        "learning/home.html",
+        {
+            "modules": modules,
+            "paths": paths,
+            "star_concepts": concepts,
+            "knowledge_card_count": KnowledgeCard.objects.count(),
+            "concept_count": Concept.objects.count(),
+        },
+    )
 
 
 def courses(request):
@@ -53,6 +64,10 @@ def courses(request):
 
 def lab(request):
     return render(request, "learning/lab.html")
+
+
+def playground(request):
+    return render(request, "learning/playground.html", {"challenges": PLAYGROUND_CHALLENGES})
 
 
 def project(request):
