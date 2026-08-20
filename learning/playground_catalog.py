@@ -4,6 +4,165 @@ The catalog owns learning content only. Execution stays in the browser worker,
 which keeps exercise definitions independent from UI and transport concerns.
 """
 
+PLAYGROUND_LANGUAGES = [
+    {
+        "id": "javascript",
+        "label": "JavaScript",
+        "badge": "JS",
+        "filename": "solution.js",
+        "mode": "worker",
+        "runtime": "JS WORKER ONLINE",
+        "detail": "TIMEOUT 2000MS",
+        "starter_code": "",
+    },
+    {
+        "id": "python",
+        "label": "Python",
+        "badge": "PY",
+        "filename": "solution.py",
+        "mode": "server",
+        "runtime": "ISOLATED PYTHON",
+        "detail": "3S · 256MB · NO NETWORK",
+        "starter_code": """def sum_even(numbers):
+    # 在独立 Python Runner 接入后可执行
+    return sum(number for number in numbers if number % 2 == 0)
+
+
+print(sum_even([1, 2, 3, 4, 5, 6]))
+""",
+    },
+    {
+        "id": "c",
+        "label": "C",
+        "badge": "C",
+        "filename": "solution.c",
+        "mode": "server",
+        "runtime": "ISOLATED GCC",
+        "detail": "3S · 256MB · NO NETWORK",
+        "starter_code": """#include <stdio.h>
+
+int sum_even(const int numbers[], int length) {
+    int total = 0;
+    for (int i = 0; i < length; i++) {
+        if (numbers[i] % 2 == 0) total += numbers[i];
+    }
+    return total;
+}
+
+int main(void) {
+    int numbers[] = {1, 2, 3, 4, 5, 6};
+    printf("%d\\n", sum_even(numbers, 6));
+    return 0;
+}
+""",
+    },
+    {
+        "id": "cpp",
+        "label": "C++",
+        "badge": "C++",
+        "filename": "solution.cpp",
+        "mode": "server",
+        "runtime": "ISOLATED G++",
+        "detail": "3S · 256MB · NO NETWORK",
+        "starter_code": """#include <iostream>
+#include <vector>
+
+int sumEven(const std::vector<int>& numbers) {
+    int total = 0;
+    for (int number : numbers) {
+        if (number % 2 == 0) total += number;
+    }
+    return total;
+}
+
+int main() {
+    std::cout << sumEven({1, 2, 3, 4, 5, 6}) << '\\n';
+}
+""",
+    },
+    {
+        "id": "java",
+        "label": "Java",
+        "badge": "JAVA",
+        "filename": "Main.java",
+        "mode": "server",
+        "runtime": "ISOLATED JVM",
+        "detail": "3S · 96MB HEAP · NO NETWORK",
+        "starter_code": """public class Main {
+    static int sumEven(int[] numbers) {
+        int total = 0;
+        for (int number : numbers) {
+            if (number % 2 == 0) total += number;
+        }
+        return total;
+    }
+
+    public static void main(String[] args) {
+        System.out.println(sumEven(new int[]{1, 2, 3, 4, 5, 6}));
+    }
+}
+""",
+    },
+    {
+        "id": "html",
+        "label": "HTML",
+        "badge": "HTML",
+        "filename": "index.html",
+        "mode": "preview",
+        "runtime": "SANDBOX PREVIEW",
+        "detail": "SCRIPTS + NETWORK OFF",
+        "starter_code": """<main class="signal-card">
+  <p class="eyebrow">SYSTEM_SIGNAL</p>
+  <h1>Knowledge compiled.</h1>
+  <p>在左侧编辑 HTML，然后刷新沙箱预览。</p>
+  <button type="button">NEXT MISSION</button>
+</main>
+
+<style>
+  body { margin: 0; padding: 32px; color: #d7e4ec; background: #071017; font-family: monospace; }
+  .signal-card { max-width: 520px; padding: 28px; border: 1px solid #64ffda55; border-radius: 16px; background: #64ffda0a; }
+  .eyebrow { color: #64ffda; letter-spacing: .16em; }
+  button { padding: 10px 14px; color: #03100d; border: 0; background: #64ffda; }
+</style>
+""",
+    },
+    {
+        "id": "css",
+        "label": "CSS",
+        "badge": "CSS",
+        "filename": "styles.css",
+        "mode": "preview",
+        "runtime": "SANDBOX PREVIEW",
+        "detail": "SCRIPTS + NETWORK OFF",
+        "starter_code": """:root {
+  color-scheme: dark;
+  --signal: #64ffda;
+  --surface: #071017;
+}
+
+body {
+  margin: 0;
+  padding: 32px;
+  color: #d7e4ec;
+  background: var(--surface);
+  font-family: ui-monospace, monospace;
+}
+
+.preview-card {
+  max-width: 520px;
+  padding: 28px;
+  border: 1px solid color-mix(in srgb, var(--signal) 35%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--signal) 5%, transparent);
+  box-shadow: 0 0 40px #64ffda12;
+}
+
+.preview-card span { color: var(--signal); letter-spacing: .16em; }
+""",
+    },
+]
+
+
 PLAYGROUND_CHALLENGES = [
     {
         "id": "even-sum",

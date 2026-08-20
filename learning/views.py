@@ -1,13 +1,16 @@
+import json
 import math
 from pathlib import Path
 
+from django.conf import settings
 from django.db.models import Prefetch, Q
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
+from .code_runner import SUPPORTED_LANGUAGES, RunnerServiceError, execute_code, runner_health
 from .models import Concept, KnowledgeCard, KnowledgeSection, LearningPath, Module, QuizQuestion
-from .playground_catalog import PLAYGROUND_CHALLENGES
+from .playground_catalog import PLAYGROUND_CHALLENGES, PLAYGROUND_LANGUAGES
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -67,7 +70,49 @@ def lab(request):
 
 
 def playground(request):
-    return render(request, "learning/playground.html", {"challenges": PLAYGROUND_CHALLENGES})
+    return render(
+        request,
+        "learning/playground.html",
+        {"challenges": PLAYGROUND_CHALLENGES, "languages": PLAYGROUND_LANGUAGES},
+    )
+
+
+@require_GET
+def code_runner_health(request):
+    return JsonResponse(runner_health())
+
+
+@require_POST
+def run_code(request):
+    try:
+        content_length = int(request.META.get("CONTENT_LENGTH") or 0)
+    except ValueError:
+        content_length = 0
+    if content_length > settings.RUNNER_MAX_SOURCE_BYTES * 4 + 4096:
+        return JsonResponse({"ok": False, "error": "payload_too_large", "message": "请求内容超过安全上限。"}, status=413)
+
+    try:
+        payload = json.loads(request.body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "invalid_json", "message": "请求内容不是有效 JSON。"}, status=400)
+
+    if not isinstance(payload, dict):
+        return JsonResponse({"ok": False, "error": "invalid_payload", "message": "请求内容必须是 JSON 对象。"}, status=400)
+
+    language = payload.get("language")
+    source = payload.get("source")
+    if language not in SUPPORTED_LANGUAGES:
+        return JsonResponse({"ok": False, "error": "unsupported_language", "message": "当前语言不支持隔离执行。"}, status=400)
+    if not isinstance(source, str) or not source.strip():
+        return JsonResponse({"ok": False, "error": "empty_source", "message": "请输入需要运行的代码。"}, status=400)
+    if len(source.encode("utf-8")) > settings.RUNNER_MAX_SOURCE_BYTES:
+        return JsonResponse({"ok": False, "error": "source_too_large", "message": "代码超过 32KB 安全上限。"}, status=413)
+
+    client_id = request.META.get("REMOTE_ADDR", "unknown")
+    try:
+        return JsonResponse(execute_code(language, source, client_id))
+    except RunnerServiceError as exc:
+        return JsonResponse({"ok": False, "error": exc.code, "message": str(exc)}, status=exc.status)
 
 
 def project(request):

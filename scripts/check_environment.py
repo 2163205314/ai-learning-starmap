@@ -7,6 +7,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
+MODEL_REPO_ID = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+MODEL_DOWNLOAD_URL = f"https://huggingface.co/{MODEL_REPO_ID}"
+MODEL_REQUIRED_FILES = ("config.json", "modules.json")
 
 
 def status(ok, label, detail, fix=""):
@@ -62,11 +65,18 @@ def check_ml():
     torch_version = package_version("torch")
     st_version = package_version("sentence-transformers")
     model_dir = ROOT / "models" / "paraphrase-multilingual-MiniLM-L12-v2"
+    model_downloaded = all((model_dir / filename).is_file() for filename in MODEL_REQUIRED_FILES)
+    model_detail = str(model_dir) if model_downloaded else ("下载不完整" if model_dir.exists() else "未下载")
     ok = True
     print("\n真实 Embedding 依赖：")
     ok = status(bool(torch_version), "torch", torch_version or "未安装", cmd("-m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu")) and ok
     ok = status(bool(st_version), "sentence-transformers", st_version or "未安装", cmd("-m pip install -r requirements-ml.txt")) and ok
-    ok = status(model_dir.exists(), "本地模型目录", str(model_dir) if model_dir.exists() else "未下载", "请确保模型已下载至 models/paraphrase-multilingual-MiniLM-L12-v2") and ok
+    ok = status(
+        model_downloaded,
+        "本地模型目录",
+        model_detail,
+        f"请重新运行 start 脚本自动下载；若仍失败，请从 {MODEL_DOWNLOAD_URL} 手动下载至 models/paraphrase-multilingual-MiniLM-L12-v2",
+    ) and ok
     return ok
 
 

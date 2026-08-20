@@ -23,6 +23,11 @@ self.onmessage = async ({ data }) => {
   const logs = []
   const consoleProxy = {}
 
+  if (data.language !== "javascript") {
+    self.postMessage({ ok: false, logs, error: "RuntimeError: 当前 Worker 只接受 JavaScript 任务。" })
+    return
+  }
+
   for (const level of ["log", "info", "warn", "error"]) {
     consoleProxy[level] = (...values) => logs.push({ level, message: values.map(printable).join(" ") })
   }
