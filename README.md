@@ -7,6 +7,7 @@ AI 学习星图是一个基于 **Python + Django + SQLite + Django Templates + �
 - 首页：深空星图首页、学习路径、知识模块入口、概念星图。
 - 课程学习：按模块浏览知识卡片，展开章节，查看代码示例，完成测验。
 - 互动实验室：RAG 流程、Chunk 调节、真实/模拟 Embedding 相似度、Attention 拆解。
+- 代码工坊：切换 JavaScript、Python、C、C++、Java、HTML 和 CSS；查看判题、Runner 输出或安全预览，并在本地保存草稿。
 - 项目实战：智能客服 RAG 项目 6 步构建、Token 预算、延迟估算。
 - 概念词典：概念搜索、分类筛选、关联概念跳转。
 - Django Admin：管理模块、卡片、章节、概念、路径、测验。
@@ -16,9 +17,60 @@ AI 学习星图是一个基于 **Python + Django + SQLite + Django Templates + �
 - Python：建议 `3.12` 或更高版本。
 - 操作系统：Windows / macOS / Linux 均可，README 分别提供对应命令。
 - 网络：基础功能不需要联网；安装真实 Embedding 模型需要联网下载 PyTorch 和 Hugging Face 模型。
+- 本地 Runner：Python 直接使用项目虚拟环境；运行 C、C++、Java 还需分别安装 GCC、G++、JDK 并加入 `PATH`。
+- Docker Runner（可选）：选择容器模式时需要 Docker Desktop 或 Docker Engine。
 - 不需要 Node.js、React、Vite、Tailwind。
 
-## 使用 Docker 启动
+## 代码 Runner 模式
+
+根目录的 `runner.config` 决定 Python、C、C++、Java 的执行环境，默认使用本地模式：
+
+```ini
+[runner]
+mode = local
+host = 127.0.0.1
+port = 8765
+```
+
+- `mode = local`：启动独立于 Django 的本地 Runner 进程，使用本机工具链。每次运行都在随机临时目录中写入源码、编译并执行，结束、失败或超时后都会删除源码、可执行文件和输出文件。该模式只适合运行自己信任的学习代码，不是恶意代码安全沙箱。
+- `mode = docker`：启动 `compose.yaml` 中受限的 Runner 容器，使用容器内的 Python、GCC、G++ 和 JDK，并启用只读文件系统、无外网网络、非 root 用户以及 CPU、内存、PID、时间和输出限制。
+
+修改 `mode` 后重新运行启动脚本即可切换。Django 只负责校验请求并通过 HTTP 转发，任何模式都不会在 Django Web 进程中直接执行用户代码。
+
+使用 IDE 或命令行直接执行 `python manage.py runserver` 时，也会读取同一份 `runner.config`，自动启动 Runner，并在开发服务器退出时关闭由它启动的本地 Runner。
+
+## 使用 Docker Compose 启动容器模式
+
+下面的命令会直接同时启动 Django 和 Docker Runner，不读取宿主机启动脚本的 `runner.config`：
+
+```bash
+docker compose up -d --build
+```
+
+访问 `http://localhost:8000/`。查看状态和日志：
+
+```bash
+docker compose ps
+docker compose logs -f web runner
+```
+
+停止服务：
+
+```bash
+docker compose down
+```
+
+Runner 只在 `127.0.0.1:8765` 暴露调试端口，并通过内部网络与 Django 通信。它使用非 root 用户、只读文件系统、临时目录、无外网网络、默认 seccomp、能力清空以及 CPU、内存、PID、运行时间和输出大小限制。
+
+建议复制 `.env.example` 为 `.env`，并把 `RUNNER_SHARED_TOKEN` 改成随机长字符串：
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+## 仅启动基础 Django 容器
+
+以下旧式单容器方式不会启动隔离 Runner，因此 Python、C、C++、Java 只能编辑，不能在网页中运行。需要完整代码工坊时使用上面的 Docker Compose 方式。
 
 请先安装并启动 Docker Desktop（Windows / macOS）或 Docker Engine（Linux）。项目使用固定名称 `ai-learning-starmap` 的容器，并把当前仓库挂载到 `/app`，因此可以直接在容器内执行 Git 命令。
 
@@ -97,7 +149,7 @@ docker exec ai-learning-starmap git push origin main
 
 ## 从 GitHub 克隆后启动
 
-推荐优先使用一键启动脚本。脚本会自动检查 Python 版本、创建 `.venv`、安装依赖、执行数据库迁移、导入学习数据、运行环境检测，并在安装包失败、网络不可达、数据库未初始化、端口占用等场景给出提示。
+推荐优先使用一键启动脚本。脚本会自动检查 Python 版本、创建 `.venv`、安装依赖、执行数据库迁移、导入学习数据、运行环境检测，并按照 `runner.config` 启动本地或 Docker Runner。默认本地模式不要求安装 Docker；缺少某种本机工具链时，代码工坊会显示对应提示。
 
 ### 一键启动
 
@@ -159,6 +211,14 @@ macOS / Linux：
 ```bash
 ./start.sh --no-server
 ```
+
+如果明确只需要 JavaScript Worker 和 HTML/CSS 预览，可以跳过代码 Runner：
+
+```bash
+./start.sh --no-runner
+```
+
+Windows 同样可以把 `--no-runner` 追加到 `start.ps1` 或 `start.bat`。
 
 如果希望同时安装真实 Embedding 模型依赖，可加上参数。该步骤需要访问 PyTorch、PyPI 和 Hugging Face，网络不稳定时可以先跳过，基础网站仍可启动。
 
@@ -320,9 +380,12 @@ http://127.0.0.1:8000/
 - 首页：`http://127.0.0.1:8000/`
 - 课程学习：`http://127.0.0.1:8000/courses/`
 - 互动实验室：`http://127.0.0.1:8000/lab/`
+- 代码工坊：`http://127.0.0.1:8000/playground/`
 - 项目实战：`http://127.0.0.1:8000/project/`
 - 概念词典：`http://127.0.0.1:8000/glossary/`
 - 后台管理：`http://127.0.0.1:8000/admin/`
+
+项目的模块边界、前端分层和未来多语言代码执行安全方案见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。
 
 ## 可选：启用真实 Embedding 模型
 
@@ -346,6 +409,10 @@ macOS / Linux：
 
 ### 下载模型到本地目录
 
+`start.ps1`、`start.bat` 和 `start.sh` 会在模型缺失时自动从 Hugging Face 下载，并在网络中断后再次启动时继续下载。只有自动下载失败时，才需要使用下面的手动命令。
+
+模型页面：<https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2>
+
 Windows PowerShell：
 
 ```powershell
@@ -358,7 +425,7 @@ macOS / Linux：
 ./.venv/bin/python -c "from huggingface_hub import snapshot_download; snapshot_download('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', local_dir='models/paraphrase-multilingual-MiniLM-L12-v2')"
 ```
 
-如果网络不稳定，可重复执行下载命令，Hugging Face 会复用已下载缓存。
+如果网络不稳定，可重新运行启动脚本或重复执行下载命令，Hugging Face 会复用已下载文件。
 
 ### 验证真实模型
 
@@ -455,7 +522,7 @@ macOS / Linux：
 
 ### 下载 Hugging Face 模型超时
 
-可重复执行下载命令，或设置代理后重试。模型目录 `models/` 不提交到 GitHub，用户本地首次使用时自行下载。
+启动脚本会先自动尝试下载。失败时请设置代理或恢复网络后重新运行；也可以从 <https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2> 手动下载到 `models/paraphrase-multilingual-MiniLM-L12-v2`。模型目录 `models/` 不提交到 GitHub。
 
 ### 端口 8000 被占用
 

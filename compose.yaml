@@ -1,0 +1,52 @@
+services:
+  web:
+    build: .
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-local-dev-only-change-me}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-True}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-127.0.0.1,localhost}
+      RUNNER_SERVICE_URL: http://runner:8081
+      RUNNER_SHARED_TOKEN: ${RUNNER_SHARED_TOKEN:-local-runner-token-change-me}
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ai-learning-data:/app/data
+    depends_on:
+      runner:
+        condition: service_healthy
+    networks:
+      - app-network
+      - runner-network
+
+  runner:
+    build: ./runner
+    environment:
+      RUNNER_SHARED_TOKEN: ${RUNNER_SHARED_TOKEN:-local-runner-token-change-me}
+      RUNNER_MAX_CONCURRENCY: "2"
+      RUNNER_EXECUTION_MODE: docker
+      RUNNER_HOST: 0.0.0.0
+      RUNNER_PORT: "8081"
+    ports:
+      - "${RUNNER_PUBLISH_HOST:-127.0.0.1}:${RUNNER_PUBLISH_PORT:-8765}:8081"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 512m
+    cpus: 1.0
+    restart: unless-stopped
+    networks:
+      - runner-network
+
+volumes:
+  ai-learning-data:
+
+networks:
+  app-network:
+  runner-network:
+    internal: true

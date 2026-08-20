@@ -4,27 +4,44 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#05080f">
+    <meta name="description" content="AI 学习星图：用课程、实验与代码练习掌握现代 AI 工程。">
     <title>{% block title %}AI 学习星图{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'learning/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'learning/css/tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'learning/css/shell.css' %}">
+    {% block styles %}{% endblock %}
 </head>
 <body>
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
+    <div class="grid-noise" aria-hidden="true"></div>
     <div class="star-field" aria-hidden="true">
         {% for i in "1234567890123456789012345678901234567890" %}<span class="star"></span>{% endfor %}
     </div>
     <header class="site-header glass-card">
-        <a class="brand" href="/">✦ AI 学习星图</a>
-        <nav class="main-nav" aria-label="主导航">
-            <a href="/">首页</a>
-            <a href="/courses/">课程学习</a>
-            <a href="/lab/">互动实验室</a>
-            <a href="/project/">项目实战</a>
-            <a href="/glossary/">概念词典</a>
+        <a class="brand" href="{% url 'home' %}" aria-label="AI 学习星图首页">
+            <span class="brand-mark" aria-hidden="true">A*</span>
+            <span><b>AI 学习星图</b><small>LEARNING_OS</small></span>
+        </a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="main-nav"><span></span><span></span><span></span><span class="sr-only">展开导航</span></button>
+        <nav class="main-nav" id="main-nav" aria-label="主导航">
+            <a class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'home' %}">首页</a>
+            <a class="{% if request.resolver_match.url_name == 'courses' %}active{% endif %}" href="{% url 'courses' %}">课程</a>
+            <a class="{% if request.resolver_match.url_name == 'lab' %}active{% endif %}" href="{% url 'lab' %}">实验室</a>
+            <a class="{% if request.resolver_match.url_name == 'playground' %}active{% endif %}" href="{% url 'playground' %}"><span class="nav-live-dot"></span>代码工坊</a>
+            <a class="{% if request.resolver_match.url_name == 'project' %}active{% endif %}" href="{% url 'project' %}">项目</a>
+            <a class="{% if request.resolver_match.url_name == 'glossary' %}active{% endif %}" href="{% url 'glossary' %}">词典</a>
         </nav>
+        <div class="system-indicator" title="本地学习系统在线"><i></i><span>SYSTEM ONLINE</span></div>
     </header>
-    <main class="page-shell">
+    <main class="page-shell" id="main-content">
         {% block content %}{% endblock %}
     </main>
-    <script src="{% static 'learning/js/main.js' %}"></script>
+    <footer class="site-footer">
+        <p><span class="prompt-mark">~/atlas</span> 用可运行的实验连接每一个知识节点。</p>
+        <p>LOCAL-FIRST · DJANGO · VANILLA JS</p>
+    </footer>
+    <script src="{% static 'learning/js/app.js' %}" defer></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

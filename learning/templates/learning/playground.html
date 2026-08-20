@@ -1,0 +1,80 @@
+{% extends "learning/base.html" %}
+{% load static %}
+{% block title %}代码工坊 · AI 学习星图{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{% static 'learning/css/pages/playground.css' %}">{% endblock %}
+{% block content %}
+<section class="playground-heading">
+    <div>
+        <p class="eyebrow">// CODE WORKSHOP</p>
+        <h1>代码工坊<span>_</span></h1>
+        <p>在多语言终端中编写代码：JavaScript 可即时判题，HTML/CSS 可安全预览，Python/C/C++/Java 通过独立隔离 Runner 返回真实输出。</p>
+    </div>
+    <div class="runtime-status"><i id="runtimeLight"></i><span>RUNTIME</span><b id="runtimeName">JS WORKER ONLINE</b><small id="runtimeDetail">TIMEOUT 2000MS</small></div>
+</section>
+
+<section class="playground-shell" id="playgroundApp" data-worker-url="{% static 'learning/js/code-runner.worker.js' %}" data-runner-url="{% url 'run_code' %}" data-runner-health-url="{% url 'code_runner_health' %}">
+    <form id="runnerSecurity" hidden>{% csrf_token %}</form>
+    <aside class="challenge-rail glass-card">
+        <div class="rail-heading"><span>MISSIONS</span><b id="missionProgress">0/{{ challenges|length }}</b></div>
+        <div class="challenge-list" role="list">
+            {% for challenge in challenges %}
+            <button class="challenge-item {% if forloop.first %}active{% endif %}" type="button" data-challenge-id="{{ challenge.id }}">
+                <span>{{ challenge.index }}</span>
+                <div><b>{{ challenge.title }}</b><small>{{ challenge.difficulty }} · +{{ challenge.xp }} XP</small></div>
+                <i aria-hidden="true">›</i>
+            </button>
+            {% endfor %}
+        </div>
+        <div class="rail-note"><span>SAFETY</span><p>JS 使用临时 Worker，HTML/CSS 使用无脚本预览；Python/C/C++/Java 只在无外网、非 root、资源受限的独立容器中执行。</p></div>
+    </aside>
+
+    <div class="workspace-column">
+        <article class="mission-brief glass-card">
+            <div class="mission-meta"><span id="challengeIndex">MISSION_01</span><b id="challengeDifficulty">入门</b><em id="challengeXp">+120 XP</em></div>
+            <h2 id="challengeTitle">聚合偶数能量</h2>
+            <p id="challengeBrief"></p>
+            <div class="concept-tags" id="challengeConcepts"></div>
+            <details><summary>需要提示？</summary><p id="challengeHint"></p></details>
+        </article>
+
+        <section class="code-workspace glass-card" id="codeWorkspace">
+            <div class="terminal-bar">
+                <div class="terminal-lights" aria-hidden="true"><i></i><i></i><i></i></div>
+                <span>learner@atlas — code-workshop</span>
+                <b id="terminalConnection">WORKER::READY</b>
+            </div>
+            <div class="language-switcher" role="tablist" aria-label="选择编程语言">
+                {% for language in languages %}
+                <button type="button" role="tab" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}" tabindex="{% if forloop.first %}0{% else %}-1{% endif %}" class="language-tab {% if forloop.first %}active{% endif %}" data-language-id="{{ language.id }}"><span>{{ language.badge }}</span>{{ language.label }}</button>
+                {% endfor %}
+            </div>
+            <div class="workspace-tabs">
+                <div class="active-file"><i id="languageBadge">JS</i><span id="activeFilename">solution.js</span><small id="editorMode">WORKER</small></div>
+                <div class="editor-actions"><span id="draftState">草稿已保存</span><button type="button" id="copyCode">复制</button><button type="button" id="resetCode">重置</button><button class="run-button" type="button" id="runCode"></button></div>
+            </div>
+            <div class="terminal-prompt"><span>learner@atlas</span>:<b>~/workshop</b>$ edit <strong id="promptFilename">solution.js</strong><i aria-hidden="true"></i></div>
+            <div class="editor-stage">
+                <div class="editor-frame">
+                    <div class="line-numbers" id="lineNumbers" aria-hidden="true"></div>
+                    <textarea id="codeEditor" aria-label="JavaScript 代码编辑器" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+                </div>
+                <div class="editor-preview" id="editorPreview" hidden>
+                    <div><span>SECURE_PREVIEW</span><b>NO SCRIPT · NO NETWORK</b></div>
+                    <iframe id="previewFrame" title="HTML 和 CSS 沙箱预览" sandbox=""></iframe>
+                </div>
+            </div>
+            <div class="editor-statusbar"><span id="cursorPosition">Ln 1, Col 1</span><span>SPACES: 2</span><span>UTF-8</span><b id="languageStatus">JavaScript</b></div>
+        </section>
+
+        <section class="output-console glass-card" aria-live="polite">
+            <div class="output-head"><div><span>OUTPUT</span><span>TESTS</span></div><button type="button" id="clearOutput">CLEAR</button></div>
+            <div class="output-body" id="outputBody">
+                <p class="output-placeholder"><span>›</span> 等待运行。按 Ctrl + Enter 执行当前代码。</p>
+            </div>
+        </section>
+    </div>
+</section>
+{{ challenges|json_script:"playground-data" }}
+{{ languages|json_script:"playground-languages" }}
+{% endblock %}
+{% block scripts %}<script src="{% static 'learning/js/playground.js' %}" defer></script>{% endblock %}

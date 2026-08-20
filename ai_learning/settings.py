@@ -61,6 +61,12 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = Path(os.environ.get("DJANGO_STATIC_ROOT", str(BASE_DIR / "staticfiles")))
 STATICFILES_DIRS = []
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+RUNNER_SERVICE_URL = os.environ.get("RUNNER_SERVICE_URL", "").rstrip("/")
+RUNNER_SHARED_TOKEN = os.environ.get("RUNNER_SHARED_TOKEN", "")
+RUNNER_MAX_SOURCE_BYTES = int(os.environ.get("RUNNER_MAX_SOURCE_BYTES", str(32 * 1024)))
+RUNNER_REQUESTS_PER_MINUTE = int(os.environ.get("RUNNER_REQUESTS_PER_MINUTE", "12"))
