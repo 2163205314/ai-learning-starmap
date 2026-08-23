@@ -7,7 +7,7 @@ AI 学习星图是一个基于 **Python + Django + SQLite + Django Templates + �
 - 首页：深空星图首页、学习路径、知识模块入口、概念星图。
 - 课程学习：按模块浏览知识卡片，展开章节，查看代码示例，完成测验。
 - 互动实验室：RAG 流程、Chunk 调节、真实/模拟 Embedding 相似度、Attention 拆解。
-- 代码工坊：切换 JavaScript、Python、C、C++、Java、HTML 和 CSS；查看判题、Runner 输出或安全预览，并在本地保存草稿。
+- 代码工坊：使用与 VS Code 同源的 Monaco Editor，切换 JavaScript、Python、C、C++、Java、HTML 和 CSS；Python 通过 Pyright 提供实时补全、诊断、悬停说明和参数提示，并可查看判题、Runner 输出或安全预览。
 - 项目实战：智能客服 RAG 项目 6 步构建、Token 预算、延迟估算。
 - 概念词典：概念搜索、分类筛选、关联概念跳转。
 - Django Admin：管理模块、卡片、章节、概念、路径、测验。
@@ -16,10 +16,34 @@ AI 学习星图是一个基于 **Python + Django + SQLite + Django Templates + �
 
 - Python：建议 `3.12` 或更高版本。
 - 操作系统：Windows / macOS / Linux 均可，README 分别提供对应命令。
-- 网络：基础功能不需要联网；安装真实 Embedding 模型需要联网下载 PyTorch 和 Hugging Face 模型。
+- 网络：运行基础功能不需要联网；首次安装 Python 智能提示或真实 Embedding 模型时需要联网下载依赖。
 - 本地 Runner：Python 直接使用项目虚拟环境；运行 C、C++、Java 还需分别安装 GCC、G++、JDK 并加入 `PATH`。
 - Docker Runner（可选）：选择容器模式时需要 Docker Desktop 或 Docker Engine。
-- 不需要 Node.js、React、Vite、Tailwind。
+- Python 实时智能提示（可选）：需要 Node.js LTS 和 npm 来安装、运行 Pyright；不需要 React、Vite、Tailwind 或前端构建步骤。
+
+## Python 实时智能提示
+
+代码工坊采用最小可用的本地 LSP 架构：Monaco 在浏览器中编辑，独立 WebSocket 网关转发 LSP 消息，Pyright 提供 Python 语义分析。JavaScript、HTML、CSS 继续使用 Monaco 内置提示，C、C++、Java 暂时使用基础编辑能力。
+
+- 一键启动脚本会把固定版本的 Pyright 安装到被 Git 忽略的 `.lsp/`，不会污染全局 npm 环境。
+- 网关只监听 `127.0.0.1:8766`，使用随机令牌、Origin 校验、消息上限和连接数限制；每个浏览器连接都有独立临时工作区，断开后会终止 Pyright 并清理目录。
+- 当前实测 `.lsp/` 约占 `18.5 MiB`；仓库内 Monaco 静态资源约占 `23.4 MiB`。实际体积可能随依赖版本和文件系统略有变化，不需要大型模型或额外数据库。
+- Pyright 安装或启动失败时页面会显示 `PYRIGHT OFFLINE`，编辑器仍会自动降级，不影响其他语言和代码运行。
+
+国内网络下载 npm 较慢时，可先切换镜像再运行启动脚本：
+
+```powershell
+npm config set registry https://registry.npmmirror.com
+powershell -ExecutionPolicy Bypass -File .\start.ps1
+```
+
+如不需要 Python 实时智能提示，可跳过安装和网关启动：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start.ps1 --no-lsp
+```
+
+macOS / Linux 使用 `./start.sh --no-lsp`。直接执行 `python manage.py runserver` 时也会尝试启动本地 LSP 网关；若 `.lsp/` 尚未安装，则自动降级为 Monaco 基础提示。
 
 ## 代码 Runner 模式
 

@@ -1,6 +1,8 @@
 import importlib.metadata
+import json
 import os
 import platform
+import shutil
 import sqlite3
 import sys
 from pathlib import Path
@@ -10,6 +12,9 @@ ROOT = Path(__file__).resolve().parent.parent
 MODEL_REPO_ID = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 MODEL_DOWNLOAD_URL = f"https://huggingface.co/{MODEL_REPO_ID}"
 MODEL_REQUIRED_FILES = ("config.json", "modules.json")
+LSP_INSTALL_DIR = ROOT / ".lsp"
+PYRIGHT_SERVER = LSP_INSTALL_DIR / "node_modules" / "pyright" / "langserver.index.js"
+PYRIGHT_PACKAGE = LSP_INSTALL_DIR / "node_modules" / "pyright" / "package.json"
 
 
 def status(ok, label, detail, fix=""):
@@ -53,12 +58,36 @@ def cmd(args):
 
 
 def check_required_packages():
-    required = ["Django"]
+    required = ["Django", "websockets"]
     ok = True
     for name in required:
         version = package_version(name)
         ok = status(bool(version), f"依赖 {name}", version or "未安装", cmd("-m pip install -r requirements.txt")) and ok
     return ok
+
+
+def check_lsp():
+    print("\nPython 实时智能提示（可选）：")
+    node = shutil.which("node")
+    version = "未知版本"
+    if PYRIGHT_PACKAGE.is_file():
+        try:
+            version = json.loads(PYRIGHT_PACKAGE.read_text(encoding="utf-8")).get("version", version)
+        except (OSError, ValueError):
+            pass
+    installed = PYRIGHT_SERVER.is_file()
+    status(
+        installed,
+        "Pyright",
+        f"{version} ({LSP_INSTALL_DIR})" if installed else "未安装（Monaco 基础编辑仍可用）",
+        "安装 Node.js/npm 后重新运行启动脚本；国内网络可先执行 npm config set registry https://registry.npmmirror.com",
+    )
+    status(
+        bool(node),
+        "Node.js 运行时",
+        node or "未找到（Pyright 无法启动）",
+        "请安装 Node.js LTS 并确保 node 已加入 PATH，或使用 --no-lsp 跳过。",
+    )
 
 
 def check_ml():
@@ -111,7 +140,9 @@ def check_database():
 def main():
     print("AI 学习星图环境检测")
     print(f"项目目录: {ROOT}\n")
-    checks = [check_python(), check_venv(), check_required_packages(), check_files(), check_database(), check_ml()]
+    checks = [check_python(), check_venv(), check_required_packages(), check_files(), check_database()]
+    check_lsp()
+    checks.append(check_ml())
     print("\n结论:")
     if all(checks):
         print(f"全部环境就绪。启动命令: {cmd('manage.py runserver')}")

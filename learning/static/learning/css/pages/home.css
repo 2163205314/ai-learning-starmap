@@ -1,7 +1,7 @@
 .home-hero { min-height: 650px; grid-template-columns: minmax(0, .95fr) minmax(480px, 1.05fr); gap: clamp(32px, 5vw, 74px); }
 .status-chip { display: inline-flex; align-items: center; gap: 9px; margin-bottom: 22px; padding: 7px 10px; color: var(--text-muted); border: 1px solid var(--line); border-radius: 7px; background: rgba(255,255,255,.025); font: 650 9px/1 var(--font-code); letter-spacing: .16em; }
 .status-chip span { width: 6px; height: 6px; border-radius: 50%; background: var(--lime); animation: pulse-signal 2s infinite; }
-.home-hero h1 { max-width: 720px; font-size: clamp(52px, 6.7vw, 94px); letter-spacing: -.055em; background: none; color: var(--text-strong); text-shadow: none; }
+.home-hero h1 { max-width: 720px; font-size: var(--type-display-home); letter-spacing: -.055em; background: none; color: var(--text-strong); text-shadow: none; }
 .home-hero h1 em { color: transparent; background: linear-gradient(100deg, var(--cyan), #7bb6ff 62%, var(--purple)); -webkit-background-clip: text; background-clip: text; font-style: normal; }
 .home-hero .hero-subtitle { max-width: 590px; margin: 26px 0 0; font-size: 17px; }
 .button-code-icon { color: var(--cyan); font-family: var(--font-code); }
@@ -93,7 +93,6 @@
 
 @media (max-width: 760px) {
   .home-hero { min-height: auto; }
-  .home-hero h1 { font-size: clamp(45px, 14vw, 72px); }
   .hero-console { min-height: 440px; }
   .learning-loop { grid-template-columns: repeat(2, 1fr); margin-top: 64px; }
   .learning-loop > i { display: none; }

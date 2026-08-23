@@ -162,6 +162,19 @@ body::after {
 .eyebrow { color: var(--cyan); font-family: var(--font-code); font-size: 11px; letter-spacing: .18em; }
 .prompt-mark { color: var(--cyan); font-family: var(--font-code); }
 
+.page-title h1 {
+  font-size: var(--type-display-page);
+  line-height: 1.05;
+  letter-spacing: -.045em;
+}
+
+.page-title > p:last-child {
+  max-width: 760px;
+  margin-top: 18px;
+  font-size: 16px;
+  line-height: 1.75;
+}
+
 .site-footer {
   position: relative;
   z-index: 1;

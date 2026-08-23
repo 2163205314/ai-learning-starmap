@@ -70,3 +70,6 @@ RUNNER_SERVICE_URL = os.environ.get("RUNNER_SERVICE_URL", "").rstrip("/")
 RUNNER_SHARED_TOKEN = os.environ.get("RUNNER_SHARED_TOKEN", "")
 RUNNER_MAX_SOURCE_BYTES = int(os.environ.get("RUNNER_MAX_SOURCE_BYTES", str(32 * 1024)))
 RUNNER_REQUESTS_PER_MINUTE = int(os.environ.get("RUNNER_REQUESTS_PER_MINUTE", "12"))
+
+LSP_WEBSOCKET_URL = os.environ.get("LSP_WEBSOCKET_URL", "ws://127.0.0.1:8766/python")
+LSP_SHARED_TOKEN = os.environ.get("LSP_SHARED_TOKEN", "")

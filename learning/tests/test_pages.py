@@ -26,10 +26,16 @@ class PublicPageTests(TestCase):
         self.assertContains(response, reverse("run_code"))
         self.assertContains(response, reverse("code_runner_health"))
         self.assertContains(response, "csrfmiddlewaretoken")
+        self.assertContains(response, 'id="monacoEditor"')
+        self.assertContains(response, 'id="languageSelect"')
+        self.assertContains(response, "data-monaco-base-url")
         for language in PLAYGROUND_LANGUAGES:
             with self.subTest(language=language["id"]):
                 self.assertContains(response, f'data-language-id="{language["id"]}"')
         self.assertIsNotNone(finders.find("learning/js/code-runner.worker.js"))
+        self.assertIsNotNone(finders.find("learning/js/python-lsp.js"))
+        self.assertIsNotNone(finders.find("learning/vendor/monaco-editor/min/vs/loader.js"))
+        self.assertIsNotNone(finders.find("learning/vendor/monaco-editor/min/vs/editor/editor.main.js"))
 
     def test_navigation_marks_playground_active(self):
         response = self.client.get(reverse("playground"))

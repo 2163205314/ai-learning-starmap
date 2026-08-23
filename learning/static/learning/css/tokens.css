@@ -22,6 +22,9 @@
   --line-bright: rgba(100, 255, 218, .34);
   --font-sans: Inter, "Microsoft YaHei UI", "Noto Sans CJK SC", sans-serif;
   --font-code: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+  --type-display-home: clamp(42px, 5.8vw, 80px);
+  --type-display-page: clamp(34px, 5vw, 64px);
+  --type-display-workshop: clamp(34px, 4.5vw, 56px);
   --radius-sm: 10px;
   --radius-md: 16px;
   --radius-lg: 24px;

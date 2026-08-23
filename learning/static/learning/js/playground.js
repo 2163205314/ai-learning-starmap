@@ -7,8 +7,11 @@ if (app && dataElement && languageDataElement) {
   const languages = JSON.parse(languageDataElement.textContent)
   const challengeMap = new Map(challenges.map((challenge) => [challenge.id, challenge]))
   const languageMap = new Map(languages.map((language) => [language.id, language]))
-  const editor = document.getElementById("codeEditor")
-  const lineNumbers = document.getElementById("lineNumbers")
+  const fallbackEditor = document.getElementById("codeEditor")
+  const monacoHost = document.getElementById("monacoEditor")
+  const languageSelect = document.getElementById("languageSelect")
+  const languageSelectBadge = document.getElementById("languageSelectBadge")
+  const intelligenceStatus = document.getElementById("intelligenceStatus")
   const output = document.getElementById("outputBody")
   const runButton = document.getElementById("runCode")
   const preview = document.getElementById("editorPreview")
@@ -20,6 +23,19 @@ if (app && dataElement && languageDataElement) {
   let runnerOnline = null
   let runnerInfo = {}
   let saveTimer
+  let monacoEditor = null
+  let pythonLsp = null
+  let changingEditorValue = false
+
+  const monacoLanguageIds = {
+    javascript: "javascript",
+    python: "python",
+    c: "c",
+    cpp: "cpp",
+    java: "java",
+    html: "html",
+    css: "css",
+  }
 
   function readCompleted() {
     try {
@@ -38,6 +54,63 @@ if (app && dataElement && languageDataElement) {
     if (element) element.textContent = value
   }
 
+  function setIntelligenceStatus(state, message) {
+    intelligenceStatus.dataset.state = state
+    intelligenceStatus.querySelector("span").textContent = `智能提示 · ${message}`
+  }
+
+  function syncLanguageIntelligence() {
+    if (!monacoEditor) {
+      setIntelligenceStatus("basic", "BASIC")
+      return
+    }
+    if (currentLanguage.id === "python") {
+      if (pythonLsp) pythonLsp.activate(monacoEditor.getModel())
+      else setIntelligenceStatus("offline", "PYRIGHT OFFLINE")
+      return
+    }
+    pythonLsp?.deactivate()
+    if (["javascript", "html", "css"].includes(currentLanguage.id)) setIntelligenceStatus("builtin", "MONACO BUILT-IN")
+    else setIntelligenceStatus("basic", "BASIC")
+  }
+
+  function getEditorValue() {
+    return monacoEditor ? monacoEditor.getValue() : fallbackEditor.value
+  }
+
+  function setEditorValue(value) {
+    fallbackEditor.value = value
+    if (!monacoEditor || monacoEditor.getValue() === value) return
+    changingEditorValue = true
+    monacoEditor.setValue(value)
+    changingEditorValue = false
+  }
+
+  function focusEditor() {
+    if (monacoEditor) monacoEditor.focus()
+    else fallbackEditor.focus()
+  }
+
+  function selectEditorContent() {
+    if (monacoEditor) {
+      const model = monacoEditor.getModel()
+      monacoEditor.setSelection(model.getFullModelRange())
+      monacoEditor.focus()
+    } else {
+      fallbackEditor.focus()
+      fallbackEditor.select()
+    }
+  }
+
+  function setEditorLanguage(language) {
+    const ariaLabel = `${language.label} 代码编辑器`
+    fallbackEditor.setAttribute("aria-label", ariaLabel)
+    monacoHost.setAttribute("aria-label", ariaLabel)
+    if (!monacoEditor) return
+    window.monaco.editor.setModelLanguage(monacoEditor.getModel(), monacoLanguageIds[language.id])
+    monacoEditor.updateOptions({ ariaLabel })
+  }
+
   function updateProgress() {
     setText("missionProgress", `${completed.size}/${challenges.length}`)
     document.querySelectorAll(".challenge-item").forEach((button) => {
@@ -45,28 +118,28 @@ if (app && dataElement && languageDataElement) {
     })
   }
 
-  function updateLineNumbers() {
-    const count = Math.max(1, editor.value.split("\n").length)
-    lineNumbers.textContent = Array.from({ length: count }, (_, index) => index + 1).join("\n")
-  }
-
   function updateCursorPosition() {
-    const beforeCursor = editor.value.slice(0, editor.selectionStart).split("\n")
+    if (monacoEditor) {
+      const position = monacoEditor.getPosition()
+      setText("cursorPosition", `Ln ${position.lineNumber}, Col ${position.column}`)
+      return
+    }
+    const beforeCursor = fallbackEditor.value.slice(0, fallbackEditor.selectionStart).split("\n")
     setText("cursorPosition", `Ln ${beforeCursor.length}, Col ${beforeCursor.at(-1).length + 1}`)
   }
 
   function loadDraft() {
     const draft = localStorage.getItem(storageKey(currentChallenge, currentLanguage))
-    editor.value = draft ?? starterCode()
+    setEditorValue(draft ?? starterCode())
     setText("draftState", draft === null ? "新建本地草稿" : "已恢复本地草稿")
-    updateLineNumbers()
     updateCursorPosition()
-    editor.scrollTop = 0
-    lineNumbers.scrollTop = 0
+    if (monacoEditor) monacoEditor.setScrollPosition({ scrollTop: 0, scrollLeft: 0 })
+    else fallbackEditor.scrollTop = 0
+    pythonLsp?.documentChanged()
     if (currentLanguage.mode === "preview") renderPreview(true)
   }
 
-  function renderChallenge(challenge) {
+  function renderChallenge(challenge, shouldFocus = true) {
     currentChallenge = challenge
     document.querySelectorAll(".challenge-item").forEach((button) => {
       button.classList.toggle("active", button.dataset.challengeId === challenge.id)
@@ -86,7 +159,7 @@ if (app && dataElement && languageDataElement) {
     )
     loadDraft()
     clearOutput()
-    editor.focus()
+    if (shouldFocus) focusEditor()
   }
 
   function configureRunButton() {
@@ -144,14 +217,10 @@ if (app && dataElement && languageDataElement) {
     updateRuntimeStatus()
   }
 
-  function renderLanguage(language) {
+  function renderLanguage(language, shouldFocus = true) {
     currentLanguage = language
-    document.querySelectorAll(".language-tab").forEach((button) => {
-      const active = button.dataset.languageId === language.id
-      button.classList.toggle("active", active)
-      button.setAttribute("aria-selected", String(active))
-      button.tabIndex = active ? 0 : -1
-    })
+    languageSelect.value = language.id
+    languageSelectBadge.textContent = language.badge
     workspace.dataset.language = language.id
     workspace.classList.toggle("preview-active", language.mode === "preview")
     preview.hidden = language.mode !== "preview"
@@ -161,11 +230,12 @@ if (app && dataElement && languageDataElement) {
     setText("editorMode", language.mode.toUpperCase())
     setText("languageStatus", language.label)
     updateRuntimeStatus()
-    editor.setAttribute("aria-label", `${language.label} 代码编辑器`)
+    setEditorLanguage(language)
     configureRunButton()
     loadDraft()
+    syncLanguageIntelligence()
     clearOutput()
-    editor.focus()
+    if (shouldFocus) focusEditor()
   }
 
   function outputPlaceholder(message) {
@@ -244,8 +314,8 @@ if (app && dataElement && languageDataElement) {
 
   function buildPreviewDocument() {
     const policy = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:\">"
-    if (currentLanguage.id === "html") return `${policy}${editor.value}`
-    const safeCss = editor.value.replace(/<\/style/gi, "<\\/style")
+    if (currentLanguage.id === "html") return `${policy}${getEditorValue()}`
+    const safeCss = getEditorValue().replace(/<\/style/gi, "<\\/style")
     return `${policy}<main class="preview-card"><span>CSS_SIGNAL</span><h1>Style systems online.</h1><p>调整变量、间距和边框，观察终端卡片如何变化。</p></main><style>${safeCss}</style>`
   }
 
@@ -315,7 +385,7 @@ if (app && dataElement && languageDataElement) {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
-        body: JSON.stringify({ language: currentLanguage.id, source: editor.value }),
+        body: JSON.stringify({ language: currentLanguage.id, source: getEditorValue() }),
         signal: controller.signal,
       })
       const data = await response.json()
@@ -374,7 +444,7 @@ if (app && dataElement && languageDataElement) {
     }
     worker.postMessage({
       language: "javascript",
-      source: editor.value,
+      source: getEditorValue(),
       entryPoint: challenge.entry_point,
       tests: challenge.tests,
     })
@@ -386,56 +456,151 @@ if (app && dataElement && languageDataElement) {
     else if (currentLanguage.mode === "preview") renderPreview()
   }
 
+  function handleEditorInput() {
+    updateCursorPosition()
+    setText("draftState", "正在保存...")
+    window.clearTimeout(saveTimer)
+    const draftKey = storageKey(currentChallenge, currentLanguage)
+    const draftValue = getEditorValue()
+    const shouldRefreshPreview = currentLanguage.mode === "preview"
+    saveTimer = window.setTimeout(() => {
+      localStorage.setItem(draftKey, draftValue)
+      setText("draftState", "草稿已保存在本地")
+      if (shouldRefreshPreview && draftKey === storageKey(currentChallenge, currentLanguage)) renderPreview(true)
+    }, 250)
+  }
+
+  function initializeMonacoEditor() {
+    if (!window.require?.config || !app.dataset.monacoBaseUrl) {
+      setText("editorEngine", "BASIC FALLBACK")
+      return
+    }
+
+    window.require.config({
+      paths: { vs: `${app.dataset.monacoBaseUrl}/vs` },
+    })
+
+    window.require(
+      ["vs/editor/editor.main"],
+      () => {
+        window.monaco.editor.defineTheme("atlas-dark", {
+          base: "vs-dark",
+          inherit: true,
+          rules: [
+            { token: "comment", foreground: "607985", fontStyle: "italic" },
+            { token: "keyword", foreground: "64FFDA" },
+            { token: "string", foreground: "F5CB75" },
+            { token: "number", foreground: "A6E3A1" },
+            { token: "type", foreground: "7CB7FF" },
+          ],
+          colors: {
+            "editor.background": "#05080D",
+            "editor.foreground": "#D1DEE6",
+            "editorLineNumber.foreground": "#354955",
+            "editorLineNumber.activeForeground": "#64FFDA",
+            "editorCursor.foreground": "#64FFDA",
+            "editor.selectionBackground": "#64FFDA33",
+            "editor.inactiveSelectionBackground": "#64FFDA1A",
+            "editorIndentGuide.background1": "#16242D",
+            "editorIndentGuide.activeBackground1": "#41606F",
+            "editor.lineHighlightBackground": "#0A1018",
+            "editorGutter.background": "#05080D",
+            "editorWidget.background": "#0A1119",
+            "editorWidget.border": "#24414D",
+            "editorSuggestWidget.selectedBackground": "#12322F",
+            "focusBorder": "#64FFDA88",
+          },
+        })
+
+        monacoHost.hidden = false
+        monacoEditor = window.monaco.editor.create(monacoHost, {
+          value: fallbackEditor.value,
+          language: monacoLanguageIds[currentLanguage.id],
+          theme: "atlas-dark",
+          ariaLabel: `${currentLanguage.label} 代码编辑器`,
+          automaticLayout: true,
+          fontFamily: '"Cascadia Code", "JetBrains Mono", Consolas, monospace',
+          fontLigatures: true,
+          fontSize: 15,
+          lineHeight: 24,
+          tabSize: 2,
+          insertSpaces: true,
+          detectIndentation: false,
+          formatOnPaste: true,
+          quickSuggestions: { other: true, comments: false, strings: false },
+          suggestOnTriggerCharacters: true,
+          parameterHints: { enabled: true, cycle: true },
+          snippetSuggestions: "top",
+          tabCompletion: "on",
+          wordBasedSuggestions: "matchingDocuments",
+          bracketPairColorization: { enabled: true },
+          guides: { bracketPairs: "active", indentation: true },
+          minimap: { enabled: true, showSlider: "mouseover" },
+          padding: { top: 16, bottom: 24 },
+          renderWhitespace: "selection",
+          scrollBeyondLastLine: false,
+          smoothScrolling: true,
+          cursorBlinking: "smooth",
+          cursorSmoothCaretAnimation: "on",
+          overviewRulerBorder: false,
+          fixedOverflowWidgets: true,
+        })
+        fallbackEditor.hidden = true
+        setText("editorEngine", "MONACO 0.56.0")
+
+        monacoEditor.onDidChangeModelContent(() => {
+          fallbackEditor.value = monacoEditor.getValue()
+          if (!changingEditorValue) {
+            handleEditorInput()
+            pythonLsp?.documentChanged()
+          }
+        })
+        monacoEditor.onDidChangeCursorPosition(updateCursorPosition)
+        monacoEditor.addCommand(window.monaco.KeyMod.CtrlCmd | window.monaco.KeyCode.Enter, runCode)
+        if (window.AtlasPythonLsp) {
+          pythonLsp = window.AtlasPythonLsp.create({
+            monaco: window.monaco,
+            websocketUrl: app.dataset.pythonLspUrl,
+            statusChanged: ({ state, message }) => setIntelligenceStatus(state, message),
+          })
+        }
+        setEditorLanguage(currentLanguage)
+        syncLanguageIntelligence()
+        updateCursorPosition()
+      },
+      () => {
+        monacoHost.hidden = true
+        fallbackEditor.hidden = false
+        setText("editorEngine", "BASIC FALLBACK")
+        setIntelligenceStatus("basic", "BASIC")
+      },
+    )
+  }
+
   document.querySelector(".challenge-list").addEventListener("click", (event) => {
     const button = event.target.closest(".challenge-item")
     const challenge = button && challengeMap.get(button.dataset.challengeId)
     if (challenge) renderChallenge(challenge)
   })
 
-  document.querySelector(".language-switcher").addEventListener("click", (event) => {
-    const button = event.target.closest(".language-tab")
-    const language = button && languageMap.get(button.dataset.languageId)
+  languageSelect.addEventListener("change", (event) => {
+    const language = languageMap.get(event.target.value)
     if (language) renderLanguage(language)
   })
-  document.querySelector(".language-switcher").addEventListener("keydown", (event) => {
-    if (!new Set(["ArrowLeft", "ArrowRight", "Home", "End"]).has(event.key)) return
-    const tabs = [...document.querySelectorAll(".language-tab")]
-    const currentIndex = tabs.indexOf(document.activeElement)
-    if (currentIndex < 0) return
-    event.preventDefault()
-    let nextIndex = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : currentIndex + (event.key === "ArrowRight" ? 1 : -1)
-    nextIndex = (nextIndex + tabs.length) % tabs.length
-    tabs[nextIndex].focus()
-    tabs[nextIndex].click()
-  })
 
-  editor.addEventListener("input", () => {
-    updateLineNumbers()
-    updateCursorPosition()
-    setText("draftState", "正在保存...")
-    window.clearTimeout(saveTimer)
-    saveTimer = window.setTimeout(() => {
-      localStorage.setItem(storageKey(currentChallenge, currentLanguage), editor.value)
-      setText("draftState", "草稿已保存在本地")
-      if (currentLanguage.mode === "preview") renderPreview(true)
-    }, 250)
-  })
-
-  editor.addEventListener("scroll", () => {
-    lineNumbers.scrollTop = editor.scrollTop
-  })
-  editor.addEventListener("click", updateCursorPosition)
-  editor.addEventListener("keyup", updateCursorPosition)
-  editor.addEventListener("keydown", (event) => {
+  fallbackEditor.addEventListener("input", handleEditorInput)
+  fallbackEditor.addEventListener("click", updateCursorPosition)
+  fallbackEditor.addEventListener("keyup", updateCursorPosition)
+  fallbackEditor.addEventListener("keydown", (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
       event.preventDefault()
       runCode()
     }
     if (event.key === "Tab") {
       event.preventDefault()
-      const start = editor.selectionStart
-      editor.setRangeText("  ", start, editor.selectionEnd, "end")
-      editor.dispatchEvent(new Event("input"))
+      const start = fallbackEditor.selectionStart
+      fallbackEditor.setRangeText("  ", start, fallbackEditor.selectionEnd, "end")
+      fallbackEditor.dispatchEvent(new Event("input"))
     }
   })
 
@@ -443,27 +608,28 @@ if (app && dataElement && languageDataElement) {
   document.getElementById("clearOutput").addEventListener("click", clearOutput)
   document.getElementById("copyCode").addEventListener("click", async () => {
     try {
-      await navigator.clipboard.writeText(editor.value)
+      await navigator.clipboard.writeText(getEditorValue())
       setText("draftState", "代码已复制")
     } catch {
       setText("draftState", "复制失败，请手动选择代码")
-      editor.focus()
-      editor.select()
+      selectEditorContent()
     }
   })
   document.getElementById("resetCode").addEventListener("click", () => {
-    editor.value = starterCode()
+    setEditorValue(starterCode())
     localStorage.removeItem(storageKey(currentChallenge, currentLanguage))
     setText("draftState", "已重置为初始代码")
-    updateLineNumbers()
+    pythonLsp?.documentChanged()
     updateCursorPosition()
     if (currentLanguage.mode === "preview") renderPreview(true)
     clearOutput()
-    editor.focus()
+    focusEditor()
   })
 
   updateProgress()
-  renderLanguage(currentLanguage)
-  renderChallenge(currentChallenge)
+  renderLanguage(currentLanguage, false)
+  renderChallenge(currentChallenge, false)
+  initializeMonacoEditor()
   checkRunnerHealth()
+  window.addEventListener("beforeunload", () => pythonLsp?.dispose())
 }

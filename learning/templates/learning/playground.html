@@ -12,7 +12,7 @@
     <div class="runtime-status"><i id="runtimeLight"></i><span>RUNTIME</span><b id="runtimeName">JS WORKER ONLINE</b><small id="runtimeDetail">TIMEOUT 2000MS</small></div>
 </section>
 
-<section class="playground-shell" id="playgroundApp" data-worker-url="{% static 'learning/js/code-runner.worker.js' %}" data-runner-url="{% url 'run_code' %}" data-runner-health-url="{% url 'code_runner_health' %}">
+<section class="playground-shell" id="playgroundApp" data-worker-url="{% static 'learning/js/code-runner.worker.js' %}" data-runner-url="{% url 'run_code' %}" data-runner-health-url="{% url 'code_runner_health' %}" data-monaco-base-url="{% static 'learning/vendor/monaco-editor/min' %}" data-python-lsp-url="{{ python_lsp_url }}">
     <form id="runnerSecurity" hidden>{% csrf_token %}</form>
     <aside class="challenge-rail glass-card">
         <div class="rail-heading"><span>MISSIONS</span><b id="missionProgress">0/{{ challenges|length }}</b></div>
@@ -43,10 +43,17 @@
                 <span>learner@atlas — code-workshop</span>
                 <b id="terminalConnection">WORKER::READY</b>
             </div>
-            <div class="language-switcher" role="tablist" aria-label="选择编程语言">
-                {% for language in languages %}
-                <button type="button" role="tab" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}" tabindex="{% if forloop.first %}0{% else %}-1{% endif %}" class="language-tab {% if forloop.first %}active{% endif %}" data-language-id="{{ language.id }}"><span>{{ language.badge }}</span>{{ language.label }}</button>
-                {% endfor %}
+            <div class="language-switcher">
+                <span class="language-switch-label" aria-hidden="true">LANGUAGE</span>
+                <div class="language-select-control">
+                    <span class="language-select-badge" id="languageSelectBadge" aria-hidden="true">JS</span>
+                    <select id="languageSelect" aria-label="选择编程语言">
+                        {% for language in languages %}
+                        <option value="{{ language.id }}" data-language-id="{{ language.id }}">{{ language.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <span class="intelligence-status" id="intelligenceStatus" data-state="builtin"><i aria-hidden="true"></i><span>智能提示 · MONACO</span></span>
             </div>
             <div class="workspace-tabs">
                 <div class="active-file"><i id="languageBadge">JS</i><span id="activeFilename">solution.js</span><small id="editorMode">WORKER</small></div>
@@ -55,15 +62,15 @@
             <div class="terminal-prompt"><span>learner@atlas</span>:<b>~/workshop</b>$ edit <strong id="promptFilename">solution.js</strong><i aria-hidden="true"></i></div>
             <div class="editor-stage">
                 <div class="editor-frame">
-                    <div class="line-numbers" id="lineNumbers" aria-hidden="true"></div>
-                    <textarea id="codeEditor" aria-label="JavaScript 代码编辑器" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+                    <div class="monaco-editor-host" id="monacoEditor" aria-label="JavaScript 代码编辑器" hidden></div>
+                    <textarea class="editor-fallback" id="codeEditor" aria-label="JavaScript 代码编辑器" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
                 </div>
                 <div class="editor-preview" id="editorPreview" hidden>
                     <div><span>SECURE_PREVIEW</span><b>NO SCRIPT · NO NETWORK</b></div>
                     <iframe id="previewFrame" title="HTML 和 CSS 沙箱预览" sandbox=""></iframe>
                 </div>
             </div>
-            <div class="editor-statusbar"><span id="cursorPosition">Ln 1, Col 1</span><span>SPACES: 2</span><span>UTF-8</span><b id="languageStatus">JavaScript</b></div>
+            <div class="editor-statusbar"><span id="cursorPosition">Ln 1, Col 1</span><span>SPACES: 2</span><span>UTF-8</span><span id="editorEngine">MONACO LOADING</span><b id="languageStatus">JavaScript</b></div>
         </section>
 
         <section class="output-console glass-card" aria-live="polite">
@@ -77,4 +84,8 @@
 {{ challenges|json_script:"playground-data" }}
 {{ languages|json_script:"playground-languages" }}
 {% endblock %}
-{% block scripts %}<script src="{% static 'learning/js/playground.js' %}" defer></script>{% endblock %}
+{% block scripts %}
+<script src="{% static 'learning/vendor/monaco-editor/min/vs/loader.js' %}" defer></script>
+<script src="{% static 'learning/js/python-lsp.js' %}" defer></script>
+<script src="{% static 'learning/js/playground.js' %}" defer></script>
+{% endblock %}

@@ -1,1 +1,2 @@
 Django>=5.0,<6.0
+websockets>=13.1,<15.0

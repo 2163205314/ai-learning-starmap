@@ -11,6 +11,7 @@ AI 学习星图不是静态知识展示站，而是一个“理解 → 实验 �
 ├─ Django Templates：页面结构与服务端内容渲染
 ├─ CSS Modules：视觉令牌、全局外壳、页面样式
 ├─ Page Controllers：课程、实验室、代码工坊交互
+├─ Monaco + LSP Client：编辑器与 Python 语言功能适配
 ├─ Web Worker：本地 JavaScript 练习运行与测试
 └─ sandbox iframe：HTML/CSS 无脚本、无网络预览
         │ HTTP
@@ -21,11 +22,19 @@ Django
 ├─ Catalog：代码练习等策划内容
 ├─ Models：课程、概念、路径、测验领域数据
 └─ SQLite：本地学习内容存储
-        │ 带共享令牌的 HTTP
+        │ 带共享令牌的 HTTP（代码执行）
         ▼
 独立 Runner 进程
 ├─ local：本机工具链 + 每次运行独立临时目录
 └─ docker：受限容器 + 每次运行独立临时目录
+
+浏览器 Monaco
+        │ 带随机令牌的 loopback WebSocket
+        ▼
+Python LSP 网关（127.0.0.1:8766）
+        │ JSON-RPC / stdio
+        ▼
+每连接独立 Pyright 进程 + 临时工作区
 ```
 
 ## 前端模块
@@ -45,9 +54,23 @@ Django
 - `js/app.js`：全站导航等外壳行为。
 - `js/courses.js`、`js/lab.js`、`js/main.js`：各页面控制器。
 - `js/playground.js`：代码工坊状态、草稿、运行和反馈界面。
+- `js/python-lsp.js`：Monaco 与 Pyright 的轻量 LSP 适配，负责文档同步、补全、诊断、Hover 和参数提示。
 - `js/code-runner.worker.js`：代码执行与测试，不操作页面 DOM。
 
 页面控制器之间不直接互相调用。跨页面的学习进度后续应抽成独立 `progress-store.js`，再由各页面消费。
+
+## Python 语言服务器
+
+Python 智能提示与代码执行是两条完全独立的链路。LSP 网关只转发有大小限制的 JSON-RPC 消息，不执行学习者代码，也不经过 Django View。
+
+1. 启动脚本将固定版本 Pyright 安装在被 Git 忽略的 `.lsp/`，并启动只监听 loopback 的 `lsp_gateway/gateway_server.py`。
+2. Django 只把当前进程生成的 WebSocket 地址和随机令牌渲染到代码工坊页面。
+3. 浏览器仅允许从 `localhost`、`127.0.0.1` 或 `::1` 页面连接网关；网关同时校验随机令牌、Origin、1 MiB WebSocket 消息上限及最多 4 个并发连接。
+4. 每个连接创建独立临时目录和 Pyright 子进程；连接结束后终止进程并清理目录，编辑内容不写入项目和数据库。
+5. 文档版本随每次同步递增，客户端忽略不属于当前版本的诊断，避免旧错误覆盖新代码。
+6. Pyright 或 Node.js 缺失时状态切换为离线，Python 自动退回 Monaco 基础编辑；其他语言不经过该网关。
+
+该方案面向单机开发和学习环境，不是公网共享 LSP 服务。公网部署应把 WebSocket 网关放在受认证的反向代理之后，并增加用户级进程配额、全局限流、监控和网络隔离。
 
 ## 代码工坊的安全模型
 

@@ -23,7 +23,12 @@ MODEL_DOWNLOAD_URL = f"https://huggingface.co/{MODEL_REPO_ID}"
 MODEL_REQUIRED_FILES = ("config.json", "modules.json")
 RUNNER_CONFIG_PATH = ROOT / "runner.config"
 RUNNER_STATE_DIR = ROOT / ".runner"
+LSP_INSTALL_DIR = ROOT / ".lsp"
+PYRIGHT_VERSION = "1.1.413"
+LSP_HOST = "127.0.0.1"
+LSP_PORT = 8766
 LOCAL_RUNNER_PROCESS = None
+LOCAL_LSP_PROCESS = None
 
 
 def print_step(message):
@@ -131,6 +136,31 @@ def install_requirements():
     )
 
 
+def pyright_is_installed():
+    return (LSP_INSTALL_DIR / "node_modules" / "pyright" / "langserver.index.js").is_file()
+
+
+def install_pyright():
+    if pyright_is_installed():
+        print_step("Pyright 已安装")
+        print(LSP_INSTALL_DIR)
+        return True
+    npm = shutil.which("npm")
+    if not npm:
+        print_step("Pyright 未安装")
+        print_hint("未找到 Node.js/npm，Python 将继续使用基础补全。")
+        print_hint("安装 Node.js 后重新运行 start.ps1 即可自动安装 Pyright。")
+        return False
+    return run(
+        [npm, "install", "--prefix", str(LSP_INSTALL_DIR), "--no-audit", "--no-fund", f"pyright@{PYRIGHT_VERSION}"],
+        "安装 Python 实时提示引擎 Pyright",
+        [
+            "国内网络较慢时可先执行: npm config set registry https://registry.npmmirror.com",
+            "Pyright 安装失败不会阻止基础网站启动。",
+        ],
+    )
+
+
 def install_ml_requirements():
     if not internet_available():
         print_hint("无法连接 pypi.org，请检查网络或代理后重试。")
@@ -219,6 +249,22 @@ def get_runner_token():
     return token
 
 
+def get_lsp_token():
+    RUNNER_STATE_DIR.mkdir(parents=True, exist_ok=True)
+    token_path = RUNNER_STATE_DIR / "lsp-token"
+    if token_path.exists():
+        token = token_path.read_text(encoding="utf-8").strip()
+        if token:
+            return token
+    token = secrets.token_urlsafe(32)
+    token_path.write_text(token, encoding="utf-8")
+    try:
+        token_path.chmod(0o600)
+    except OSError:
+        pass
+    return token
+
+
 def runner_health(url, expected_mode, token):
     try:
         request = urllib.request.Request(f"{url}/health", headers={"X-Runner-Token": token})
@@ -294,6 +340,70 @@ def stop_local_runner():
         LOCAL_RUNNER_PROCESS = None
 
 
+def lsp_health(token):
+    try:
+        request = urllib.request.Request(f"http://{LSP_HOST}:{LSP_PORT}/health?token={token}")
+        with urllib.request.urlopen(request, timeout=1) as response:
+            payload = json.loads(response.read(16 * 1024))
+        return bool(payload.get("ok")) and payload.get("service") == "lsp-gateway"
+    except (urllib.error.URLError, TimeoutError, ValueError):
+        return False
+
+
+def start_lsp_gateway():
+    global LOCAL_LSP_PROCESS
+    token = get_lsp_token()
+    os.environ["LSP_SHARED_TOKEN"] = token
+    os.environ["LSP_WEBSOCKET_URL"] = f"ws://{LSP_HOST}:{LSP_PORT}/python"
+    if lsp_health(token):
+        print_step("Python LSP 网关已在运行")
+        return True
+
+    gateway_env = os.environ.copy()
+    creation_flags = subprocess.CREATE_NO_WINDOW if IS_WINDOWS else 0
+    print_step("启动 Python LSP 网关")
+    try:
+        LOCAL_LSP_PROCESS = subprocess.Popen(
+            [str(PYTHON), str(ROOT / "lsp_gateway" / "gateway_server.py"), "--host", LSP_HOST, "--port", str(LSP_PORT)],
+            cwd=ROOT,
+            env=gateway_env,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=creation_flags,
+        )
+    except OSError as exc:
+        print_hint(f"Python LSP 网关启动失败: {exc}")
+        return False
+
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        if lsp_health(token):
+            print(f"Python LSP: ws://{LSP_HOST}:{LSP_PORT}/python")
+            return True
+        if LOCAL_LSP_PROCESS.poll() is not None:
+            break
+        time.sleep(0.2)
+    print_hint("Python LSP 网关未能在 5 秒内启动，请检查 8766 端口是否被占用。")
+    stop_lsp_gateway()
+    return False
+
+
+def stop_lsp_gateway():
+    global LOCAL_LSP_PROCESS
+    if LOCAL_LSP_PROCESS is None or LOCAL_LSP_PROCESS.poll() is not None:
+        LOCAL_LSP_PROCESS = None
+        return
+    LOCAL_LSP_PROCESS.terminate()
+    try:
+        LOCAL_LSP_PROCESS.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        LOCAL_LSP_PROCESS.kill()
+        LOCAL_LSP_PROCESS.wait(timeout=2)
+    finally:
+        LOCAL_LSP_PROCESS = None
+
+
 def start_docker_runner(config):
     docker = shutil.which("docker")
     if not docker:
@@ -362,6 +472,7 @@ def runserver(host_port):
         return True
     finally:
         stop_local_runner()
+        stop_lsp_gateway()
     if result.returncode != 0:
         print("\n服务启动失败")
         print_hint("如果提示端口被占用，请换端口运行，例如: --host-port 127.0.0.1:8001")
@@ -371,7 +482,7 @@ def runserver(host_port):
 
 
 def parse_args():
-    args = {"host_port": "127.0.0.1:8000", "no_server": False, "no_runner": False}
+    args = {"host_port": "127.0.0.1:8000", "no_server": False, "no_runner": False, "no_lsp": False, "with_ml": False}
     index = 1
     while index < len(sys.argv):
         item = sys.argv[index]
@@ -379,6 +490,10 @@ def parse_args():
             args["no_server"] = True
         elif item == "--no-runner":
             args["no_runner"] = True
+        elif item == "--no-lsp":
+            args["no_lsp"] = True
+        elif item == "--with-ml":
+            args["with_ml"] = True
         elif item == "--port" and index + 1 < len(sys.argv):
             args["host_port"] = f"127.0.0.1:{sys.argv[index + 1]}"
             index += 1
@@ -403,11 +518,18 @@ def main():
         print_hint("请安装 Python 3.12+ 后重新运行。")
         return 1
 
-    for step in [create_venv, install_requirements, install_ml_requirements, download_embedding_model]:
+    for step in [create_venv, install_requirements]:
         ok = step(python_command) if step == create_venv else step()
         if not ok:
             print("\n启动准备未完成，请按上方提示修复问题后重新运行。")
             return 1
+    if not args["no_lsp"] and not install_pyright():
+        print_hint("Python 实时智能提示暂不可用，基础编辑功能不受影响。")
+    if args["with_ml"]:
+        for step in [install_ml_requirements, download_embedding_model]:
+            if not step():
+                print("\n真实 Embedding 准备未完成，请按上方提示修复问题后重新运行。")
+                return 1
     for step in [migrate_database, seed_data, check_environment]:
         if not step():
             print("\n启动准备未完成，请按上方提示修复问题后重新运行。")
@@ -417,6 +539,8 @@ def main():
         return 0
     if not args["no_runner"] and not start_code_runner():
         print_hint("基础网站将继续启动；代码工坊会在运行时显示 Runner 连接提示。")
+    if not args["no_lsp"] and not start_lsp_gateway():
+        print_hint("基础网站将继续启动；Python 会降级为 Monaco 基础提示。")
     return 0 if runserver(args["host_port"]) else 1
 
 

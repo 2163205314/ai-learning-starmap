@@ -1,6 +1,7 @@
 import json
 import math
 from pathlib import Path
+from urllib.parse import quote
 
 from django.conf import settings
 from django.db.models import Prefetch, Q
@@ -70,10 +71,12 @@ def lab(request):
 
 
 def playground(request):
+    separator = "&" if "?" in settings.LSP_WEBSOCKET_URL else "?"
+    python_lsp_url = f"{settings.LSP_WEBSOCKET_URL}{separator}token={quote(settings.LSP_SHARED_TOKEN)}" if settings.LSP_SHARED_TOKEN else ""
     return render(
         request,
         "learning/playground.html",
-        {"challenges": PLAYGROUND_CHALLENGES, "languages": PLAYGROUND_LANGUAGES},
+        {"challenges": PLAYGROUND_CHALLENGES, "languages": PLAYGROUND_LANGUAGES, "python_lsp_url": python_lsp_url},
     )
 
 

@@ -41,3 +41,4 @@ Thumbs.db
 !.env.example
 *.log
 .runner/
+.lsp/

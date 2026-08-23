@@ -35,6 +35,27 @@ class BootstrapModelDownloadTests(SimpleTestCase):
             self.assertTrue(any(bootstrap.MODEL_DOWNLOAD_URL in hint for hint in hints))
 
 
+class BootstrapArgumentTests(SimpleTestCase):
+    def test_ml_install_is_opt_in(self):
+        with mock.patch.object(bootstrap.sys, "argv", ["bootstrap.py", "--no-server"]):
+            args = bootstrap.parse_args()
+
+        self.assertFalse(args["with_ml"])
+        self.assertTrue(args["no_server"])
+
+    def test_with_ml_flag_enables_real_model_setup(self):
+        with mock.patch.object(bootstrap.sys, "argv", ["bootstrap.py", "--with-ml"]):
+            args = bootstrap.parse_args()
+
+        self.assertTrue(args["with_ml"])
+
+    def test_no_lsp_flag_skips_language_server_setup(self):
+        with mock.patch.object(bootstrap.sys, "argv", ["bootstrap.py", "--no-lsp"]):
+            args = bootstrap.parse_args()
+
+        self.assertTrue(args["no_lsp"])
+
+
 class BootstrapRunnerTests(SimpleTestCase):
     @mock.patch("scripts.bootstrap.shutil.which", return_value=None)
     @mock.patch("scripts.bootstrap.run")
@@ -84,23 +105,29 @@ class BootstrapRunnerTests(SimpleTestCase):
 
 class ManageRunnerLifecycleTests(SimpleTestCase):
     @mock.patch("django.core.management.execute_from_command_line")
+    @mock.patch("scripts.bootstrap.stop_lsp_gateway")
     @mock.patch("scripts.bootstrap.stop_local_runner")
+    @mock.patch("scripts.bootstrap.start_lsp_gateway", return_value=True)
     @mock.patch("scripts.bootstrap.start_code_runner", return_value=True)
-    def test_direct_runserver_starts_and_stops_configured_runner(self, start_runner, stop_runner, execute):
+    def test_direct_runserver_starts_and_stops_local_services(self, start_runner, start_lsp, stop_runner, stop_lsp, execute):
         with mock.patch.object(manage.sys, "argv", ["manage.py", "runserver"]), mock.patch.dict(
             manage.os.environ, {"RUN_MAIN": ""}
         ):
             manage.main()
 
         start_runner.assert_called_once_with()
+        start_lsp.assert_called_once_with()
         execute.assert_called_once_with(["manage.py", "runserver"])
         stop_runner.assert_called_once_with()
+        stop_lsp.assert_called_once_with()
 
     @mock.patch("django.core.management.execute_from_command_line")
+    @mock.patch("scripts.bootstrap.start_lsp_gateway")
     @mock.patch("scripts.bootstrap.start_code_runner")
-    def test_non_runserver_command_does_not_start_runner(self, start_runner, execute):
+    def test_non_runserver_command_does_not_start_local_services(self, start_runner, start_lsp, execute):
         with mock.patch.object(manage.sys, "argv", ["manage.py", "check"]):
             manage.main()
 
         start_runner.assert_not_called()
+        start_lsp.assert_not_called()
         execute.assert_called_once_with(["manage.py", "check"])

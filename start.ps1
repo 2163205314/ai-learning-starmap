@@ -19,7 +19,7 @@ function Find-PythonCommand {
             if ($LASTEXITCODE -eq 0) {
                 $parts = $version.Trim().Split('.')
                 if ([int]$parts[0] -gt 3 -or ([int]$parts[0] -eq 3 -and [int]$parts[1] -ge 12)) {
-                    return $candidate
+                    return ,$candidate
                 }
             }
         } catch {}
@@ -42,7 +42,8 @@ if ($python.Length -gt 1) {
 
 # 将 stderr 合并到 stdout，避免 pip 正常的进度输出触发 PowerShell 错误终止
 & $python[0] @pythonArgs scripts\bootstrap.py @args 2>&1
-if ($LASTEXITCODE -ne 0) {
+$bootstrapSucceeded = $?
+if (-not $bootstrapSucceeded -or $LASTEXITCODE -ne 0) {
     Write-Host "Startup failed. Please follow the hints above and retry." -ForegroundColor Red
     exit $LASTEXITCODE
 }
